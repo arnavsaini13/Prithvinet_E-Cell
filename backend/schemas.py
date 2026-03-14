@@ -5,7 +5,7 @@ Request/response models for API validation and serialization.
 
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator, ConfigDict
 
 
 # ---------- Roles ----------
@@ -27,6 +27,17 @@ class UserRegisterIn(BaseModel):
     region: str | None = None
     industry_name: str | None = None
     industry_location: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    height_above_sea_level: float | None = None
+
+    @model_validator(mode="after")
+    def _industry_geo_required(self) -> "UserRegisterIn":
+        if self.role == UserRole.industry_user:
+            missing = [f for f in ("latitude", "longitude", "height_above_sea_level") if getattr(self, f) is None]
+            if missing:
+                raise ValueError(f"Industry users must provide: {', '.join(missing)}")
+        return self
 
 
 class UserLoginIn(BaseModel):
@@ -256,3 +267,23 @@ class LeaderboardEntry(BaseModel):
     total_likes: int
     total_comments: int
     score: int
+
+
+# ---------- Industry Warnings ----------
+
+class IndustryWarningCreate(BaseModel):
+    industry_id: int
+    message: str
+    severity: str  # low / medium / high / critical
+
+
+class IndustryWarningOut(BaseModel):
+    id: int
+    industry_id: int
+    officer_name: str
+    message: str
+    severity: str
+    is_read: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

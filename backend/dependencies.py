@@ -99,5 +99,8 @@ require_officer = require_roles("admin", "regional_officer")
 # Industry User — compliance data + public
 require_industry = require_roles("admin", "regional_officer", "industry_user")
 
+# Industry User only — for endpoints exclusive to the industry_user role
+require_industry_user = require_roles("industry_user")
+
 # Citizen — public monitoring (any authenticated user)
 require_citizen = require_roles("admin", "regional_officer", "industry_user", "citizen")

@@ -82,6 +82,9 @@ export const authApi = {
     region?: string;
     industry_name?: string;
     industry_location?: string;
+    latitude?: number;
+    longitude?: number;
+    height_above_sea_level?: number;
   }) =>
     request<UserOut>("/auth/register", {
       method: "POST",
@@ -454,4 +457,32 @@ export interface AIAlert {
 
 export const regionalApi = {
   aiAlerts: () => request<AIAlert[]>("/regional/ai-alerts"),
+};
+
+// ── Industry Warnings ──────────────────────────────
+
+export interface IndustryWarning {
+  id: number;
+  industry_id: number;
+  officer_name: string;
+  message: string;
+  severity: string;  // low / medium / high / critical
+  is_read: boolean;
+  created_at: string;
+}
+
+export const warningsApi = {
+  /** Officer issues a warning to an industry */
+  issue: (data: { industry_id: number; message: string; severity: string }) =>
+    request<IndustryWarning>("/officer/warnings", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  /** Industry user retrieves their warnings */
+  myWarnings: () => request<IndustryWarning[]>("/industry/warnings"),
+
+  /** Industry user marks a warning as read */
+  markRead: (id: number) =>
+    request<void>(`/industry/warnings/${id}/read`, { method: "PATCH" }),
 };

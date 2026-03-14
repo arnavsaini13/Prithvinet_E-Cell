@@ -10,6 +10,7 @@ import { DataArchive } from "./components/DataArchive";
 import { IndustrialView } from "./components/IndustrialView";
 import { CitizenPortal } from "./components/CitizenPortal";
 import { AdminApprovals } from "./components/AdminApprovals";
+import { IndustryWarningsDashboard } from "./components/IndustryWarningsDashboard";
 import { RoleAwareDashboard } from "./components/RoleAwareDashboard";
 import { Root } from "./components/Root";
 import { Login } from "./components/Login";
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
       { path: "data-archive", Component: DataArchive },
       { path: "industries", Component: IndustrialView },
       { path: "approvals", Component: AdminApprovals },
+      { path: "warnings", Component: IndustryWarningsDashboard },
       // Legacy citizen path — redirect to the new portal
       { path: "citizen", element: <Navigate to="/citizen-portal" replace /> },
     ],

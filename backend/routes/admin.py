@@ -60,9 +60,12 @@ async def approve_user(
             select(Industry).where(Industry.name == user.industry_name)
         )
         if existing.scalar_one_or_none() is None:
-            # Use known coords if available, fall back to region center
-            coords = INDUSTRY_COORDS.get(user.industry_name) or REGION_COORDS.get(user.region or "", (21.0, 78.0))
-            lat, lng = coords
+            # Prefer the user's verified coordinates; fall back to known/region coords
+            if user.latitude is not None and user.longitude is not None:
+                lat, lng = user.latitude, user.longitude
+            else:
+                lat, lng = (INDUSTRY_COORDS.get(user.industry_name)
+                            or REGION_COORDS.get(user.region or "", (21.0, 78.0)))
             industry = Industry(
                 name=user.industry_name,
                 location=user.industry_location or "",

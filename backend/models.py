@@ -25,6 +25,9 @@ class User(Base):
     region: Mapped[str | None] = mapped_column(String(100), nullable=True)
     industry_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     industry_location: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    height_above_sea_level: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
@@ -82,6 +85,8 @@ class Industry(Base):
     latitude: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     longitude: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
+    warnings: Mapped[list["IndustryWarning"]] = relationship(back_populates="industry", cascade="all, delete-orphan")
+
 
 class Alert(Base):
     __tablename__ = "alerts"
@@ -94,6 +99,21 @@ class Alert(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
     station: Mapped["MonitoringStation"] = relationship(back_populates="alerts")
+
+
+class IndustryWarning(Base):
+    """Formal warnings issued by regional officers to non-compliant industries."""
+    __tablename__ = "industry_warnings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    industry_id: Mapped[int] = mapped_column(Integer, ForeignKey("industries.id"), nullable=False, index=True)
+    officer_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False)  # low, medium, high, critical
+    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+    industry: Mapped["Industry"] = relationship(back_populates="warnings")
 
 
 # ──────────────────────────────────────────────

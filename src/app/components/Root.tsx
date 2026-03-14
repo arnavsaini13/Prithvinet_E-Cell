@@ -3,7 +3,7 @@ import { Satellite, Wind, Waves, Leaf, Globe, Activity, Droplets, Volume2, Alert
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect, useRef } from "react";
 import "../../styles/prithvi-theme.css";
-import { riskApi, alertsApi, adminApi, type RiskScore, type Alert } from "../../api/client";
+import { riskApi, alertsApi, adminApi, warningsApi, type RiskScore, type Alert } from "../../api/client";
 import { useAuth } from "../context/AuthContext";
 
 export function Root() {
@@ -33,6 +33,16 @@ export function Root() {
   useEffect(() => {
     if (user?.role === "admin") {
       adminApi.pendingUsers().then(list => setPendingCount(list.length)).catch(() => {});
+    }
+  }, [user?.role]);
+
+  // Unread warnings count for industry_user badge
+  const [unreadWarnings, setUnreadWarnings] = useState(0);
+  useEffect(() => {
+    if (user?.role === "industry_user") {
+      warningsApi.myWarnings()
+        .then(list => setUnreadWarnings(list.filter(w => !w.is_read).length))
+        .catch(() => {});
     }
   }, [user?.role]);
 
@@ -67,6 +77,7 @@ export function Root() {
     { path: "/dashboard/industries", label: "Industries", icon: Factory, keywords: ["industry", "compliance", "factory", "pollution", "cpcb", "emissions"], roles: undefined },
     { path: "/dashboard/data-archive", label: "Data Archive", icon: Database, keywords: ["data", "archive", "export", "dataset"], roles: undefined },
     { path: "/dashboard/citizen", label: "Report Issue", icon: Flag, keywords: ["report", "complaint", "citizen", "violation", "tree", "dumping"], roles: ["citizen"] },
+    { path: "/dashboard/warnings", label: "Warnings", icon: Bell, keywords: ["warnings", "notices", "violations", "compliance", "officer", "penalty"], roles: ["industry_user"] },
     { path: "/dashboard/approvals", label: "Approvals", icon: UserCheck, keywords: ["approvals", "pending", "officers", "admin", "registration"], roles: ["admin"] },
   ];
 
@@ -705,6 +716,12 @@ export function Root() {
                         <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center"
                               style={{ background: 'var(--prithvi-critical-red)', color: '#fff' }}>
                           {pendingCount > 9 ? "9+" : pendingCount}
+                        </span>
+                      )}
+                      {item.path === "/dashboard/warnings" && unreadWarnings > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center"
+                              style={{ background: 'var(--prithvi-warm-amber)', color: '#000' }}>
+                          {unreadWarnings > 9 ? "9+" : unreadWarnings}
                         </span>
                       )}
                     </div>

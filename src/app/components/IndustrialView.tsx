@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   BarChart,
   Bar,
@@ -25,8 +25,9 @@ import {
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
-import { industriesApi, type EnrichedIndustry } from "../../api/client";
+import { industriesApi, warningsApi, type EnrichedIndustry } from "../../api/client";
 import { useAuth } from "../context/AuthContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 
 
 function complianceColor(score: number): string {
@@ -41,12 +42,60 @@ function complianceLabel(score: number): string {
   return "CRITICAL";
 }
 
+function suggestSeverity(score: number): string {
+  if (score < 40) return "critical";
+  if (score < 65) return "high";
+  if (score < 80) return "medium";
+  return "low";
+}
+
 export function IndustrialView() {
   const { user, role } = useAuth();
   const [industries, setIndustries] = useState<EnrichedIndustry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Warning modal state
+  const [warnTarget, setWarnTarget] = useState<EnrichedIndustry | null>(null);
+  const [warnMsg, setWarnMsg] = useState("");
+  const [warnSeverity, setWarnSeverity] = useState("medium");
+  const [warnLoading, setWarnLoading] = useState(false);
+
+  // Toast state
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showToast(msg: string, ok = true) {
+    setToast({ msg, ok });
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 4000);
+  }
+
+  function openWarn(ind: EnrichedIndustry) {
+    setWarnTarget(ind);
+    setWarnSeverity(suggestSeverity(ind.compliance_score));
+    setWarnMsg("");
+  }
+
+  async function submitWarning() {
+    if (!warnTarget) return;
+    if (warnMsg.trim().length < 10) return;
+    setWarnLoading(true);
+    try {
+      await warningsApi.issue({
+        industry_id: warnTarget.id,
+        message: warnMsg.trim(),
+        severity: warnSeverity,
+      });
+      setWarnTarget(null);
+      showToast(`Warning issued to ${warnTarget.name}`, true);
+    } catch (err: any) {
+      showToast(err.message ?? "Failed to issue warning", false);
+    } finally {
+      setWarnLoading(false);
+    }
+  }
 
   async function fetchData() {
     setError(null);
@@ -68,6 +117,8 @@ export function IndustrialView() {
     const id = setInterval(fetchData, 300_000); // refresh every 5 minutes
     return () => clearInterval(id);
   }, [role, user?.region]);
+
+  const isOfficer = role === "regional_officer";
 
   const avgCompliance =
     industries.length > 0
@@ -94,8 +145,132 @@ export function IndustrialView() {
     PM10:  Math.min(100, Math.round(i.pm10 / 150 * 100)),
   }));
 
+  const severityColor = (s: string) => ({
+    low: "var(--prithvi-aurora-green)",
+    medium: "var(--prithvi-electric-cyan)",
+    high: "var(--prithvi-warm-amber)",
+    critical: "var(--prithvi-critical-red)",
+  }[s] ?? "var(--prithvi-electric-cyan)");
+
   return (
     <div className="p-6 space-y-6">
+      {/* Toast notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-mono"
+            style={{
+              background: toast.ok ? "rgba(0,255,136,0.12)" : "rgba(211,47,47,0.12)",
+              border: `1px solid ${toast.ok ? "var(--prithvi-aurora-green)" : "var(--prithvi-critical-red)"}`,
+              color: toast.ok ? "var(--prithvi-aurora-green)" : "var(--prithvi-critical-red)",
+            }}
+          >
+            {toast.ok ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+            {toast.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Warning modal */}
+      <Dialog open={!!warnTarget} onOpenChange={(open) => { if (!open) setWarnTarget(null); }}>
+        <DialogContent
+          className="max-w-md border backdrop-blur-xl"
+          style={{ background: "var(--prithvi-panel-bg)", borderColor: "var(--prithvi-border-bright)" }}
+        >
+          <DialogHeader>
+            <DialogTitle className="font-mono prithvi-text-electric">
+              ISSUE WARNING — {warnTarget?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Compliance context */}
+            <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-mono"
+                 style={{ background: "var(--prithvi-glass)", borderColor: "var(--prithvi-border-dim)", border: "1px solid" }}>
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: complianceColor(warnTarget?.compliance_score ?? 100) }} />
+              <span className="prithvi-text-electric opacity-80">
+                Current compliance: <strong style={{ color: complianceColor(warnTarget?.compliance_score ?? 100) }}>
+                  {warnTarget?.compliance_score.toFixed(1)}% — {complianceLabel(warnTarget?.compliance_score ?? 100)}
+                </strong>
+              </span>
+            </div>
+
+            {/* Severity picker */}
+            <div>
+              <label className="block text-xs font-mono tracking-wider mb-2 prithvi-text-electric">SEVERITY</label>
+              <div className="grid grid-cols-4 gap-2">
+                {["low", "medium", "high", "critical"].map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setWarnSeverity(s)}
+                    className="py-1.5 rounded text-xs font-mono font-bold border transition-all"
+                    style={{
+                      background: warnSeverity === s ? `${severityColor(s)}22` : "var(--prithvi-glass)",
+                      borderColor: warnSeverity === s ? severityColor(s) : "var(--prithvi-border-dim)",
+                      color: warnSeverity === s ? severityColor(s) : "var(--prithvi-atmospheric-teal)",
+                    }}
+                  >
+                    {s.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Message */}
+            <div>
+              <label className="block text-xs font-mono tracking-wider mb-2 prithvi-text-electric">
+                WARNING MESSAGE <span className="opacity-50">(min. 10 chars)</span>
+              </label>
+              <textarea
+                value={warnMsg}
+                onChange={e => setWarnMsg(e.target.value)}
+                placeholder="Describe the compliance violation and required corrective action..."
+                rows={4}
+                className="w-full p-3 rounded-lg border font-mono text-sm bg-transparent outline-none resize-none prithvi-text-electric"
+                style={{ borderColor: "var(--prithvi-border-dim)", background: "var(--prithvi-glass)" }}
+                onFocus={e => (e.target.style.borderColor = "var(--prithvi-electric-cyan)")}
+                onBlur={e => (e.target.style.borderColor = "var(--prithvi-border-dim)")}
+              />
+              <p className="text-[10px] mt-1 font-mono opacity-40 prithvi-text-electric">
+                {warnMsg.length} characters {warnMsg.length < 10 ? `(${10 - warnMsg.length} more needed)` : "✓"}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <button
+              onClick={() => setWarnTarget(null)}
+              className="px-4 py-2 rounded-lg text-xs font-mono border transition-all"
+              style={{ borderColor: "var(--prithvi-border-dim)", color: "var(--prithvi-atmospheric-teal)" }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submitWarning}
+              disabled={warnLoading || warnMsg.trim().length < 10}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-mono font-bold border transition-all disabled:opacity-50"
+              style={{
+                background: `${severityColor(warnSeverity)}22`,
+                borderColor: severityColor(warnSeverity),
+                color: severityColor(warnSeverity),
+              }}
+            >
+              {warnLoading ? (
+                <motion.div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full"
+                  animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />
+              ) : (
+                <AlertTriangle className="w-3 h-3" />
+              )}
+              ISSUE WARNING
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -343,6 +518,7 @@ export function IndustrialView() {
                 <th className="pb-3 pr-4">NO₂ μg/m³</th>
                 <th className="pb-3 pr-4">EU AQI</th>
                 <th className="pb-3">COMPLIANCE</th>
+                {isOfficer && <th className="pb-3 pl-4">ACTIONS</th>}
               </tr>
             </thead>
             <tbody>
@@ -401,6 +577,21 @@ export function IndustrialView() {
                       </span>
                     </div>
                   </td>
+                  {isOfficer && (
+                    <td className="py-3 pl-4">
+                      <button
+                        onClick={() => openWarn(ind)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all hover:opacity-90"
+                        style={{
+                          background: "rgba(255,167,38,0.12)",
+                          color: "var(--prithvi-warm-amber)",
+                          border: "1px solid var(--prithvi-warm-amber)",
+                        }}
+                      >
+                        <AlertTriangle className="w-3 h-3" /> Warn
+                      </button>
+                    </td>
+                  )}
                 </motion.tr>
               ))}
             </tbody>

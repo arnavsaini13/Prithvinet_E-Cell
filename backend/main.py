@@ -35,6 +35,7 @@ from routes.complaints import router as complaints_router
 from routes.community import router as community_router
 from routes.admin import router as admin_router
 from routes.regional import router as regional_router
+from routes.warnings import router as warnings_router
 from services.real_data_fetcher import backfill_historical_data, run_periodic_fetcher
 from services.compliance_engine import update_all_compliance_scores, run_periodic_compliance_updater
 
@@ -78,7 +79,14 @@ async def run_migrations():
         await conn.execute(text(
             "ALTER TABLE industries ADD COLUMN IF NOT EXISTS region VARCHAR(100) DEFAULT ''"
         ))
-        print("  [Migration] industries.region column ensured.")
+        # Add geo columns to industries table
+        await conn.execute(text("ALTER TABLE industries ADD COLUMN IF NOT EXISTS latitude FLOAT NOT NULL DEFAULT 0"))
+        await conn.execute(text("ALTER TABLE industries ADD COLUMN IF NOT EXISTS longitude FLOAT NOT NULL DEFAULT 0"))
+        # Add geo + height columns to users table (for industry_user registration)
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS latitude FLOAT"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude FLOAT"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS height_above_sea_level FLOAT"))
+        print("  [Migration] columns ensured.")
 
 
 async def seed_data():
@@ -194,6 +202,7 @@ app.include_router(complaints_router)
 app.include_router(community_router)
 app.include_router(admin_router)
 app.include_router(regional_router)
+app.include_router(warnings_router)
 
 
 @app.get("/", tags=["Health"])

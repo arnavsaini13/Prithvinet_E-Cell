@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { EarthBackground } from "./EarthBackground";
-import { Lock, Mail, User, Shield, Leaf, Eye, EyeOff, CheckCircle, MapPin, ChevronRight, Factory, Building2 } from "lucide-react";
+import { Lock, Mail, User, Shield, Leaf, Eye, EyeOff, CheckCircle, MapPin, ChevronRight, Factory, Building2, Navigation } from "lucide-react";
 import { authApi } from "../../api/client";
 
 // Indian regions matching the 6 monitoring stations (value = DB region, label = display name)
@@ -29,6 +29,9 @@ export function Register() {
   const [region, setRegion] = useState("");
   const [industryName, setIndustryName] = useState("");
   const [industryLocation, setIndustryLocation] = useState("");
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
+  const [height, setHeight] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -44,6 +47,9 @@ export function Register() {
       if (!industryName.trim()) { setError("Please enter your industry name."); return; }
       if (!industryLocation.trim()) { setError("Please enter your industry location."); return; }
       if (!region.trim()) { setError("Please select your region."); return; }
+      if (!lat.trim() || isNaN(parseFloat(lat))) { setError("Please enter a valid latitude."); return; }
+      if (!lng.trim() || isNaN(parseFloat(lng))) { setError("Please enter a valid longitude."); return; }
+      if (!height.trim() || isNaN(parseFloat(height))) { setError("Please enter a valid elevation."); return; }
     }
 
     setIsLoading(true);
@@ -57,6 +63,9 @@ export function Register() {
         region: (rolePick === "regional_officer" || rolePick === "industry_user") ? region : undefined,
         industry_name: rolePick === "industry_user" ? industryName : undefined,
         industry_location: rolePick === "industry_user" ? industryLocation : undefined,
+        latitude: rolePick === "industry_user" ? parseFloat(lat) : undefined,
+        longitude: rolePick === "industry_user" ? parseFloat(lng) : undefined,
+        height_above_sea_level: rolePick === "industry_user" ? parseFloat(height) : undefined,
       });
 
       if (rolePick === "citizen") {
@@ -333,6 +342,46 @@ export function Register() {
                             placeholder="e.g. MIDC, Pune" required
                             className={inputClass} style={{ ...inputStyle }} onFocus={onFocus} onBlur={onBlur} />
                         </div>
+                      </div>
+
+                      {/* Geo coordinates */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-mono tracking-wider mb-1.5" style={{ color: "var(--prithvi-warm-amber)" }}>
+                            LATITUDE
+                          </label>
+                          <div className="relative">
+                            <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" style={{ color: "var(--prithvi-warm-amber)" }} />
+                            <input type="number" step="any" value={lat} onChange={e => setLat(e.target.value)}
+                              placeholder="e.g. 19.0447" required
+                              className={inputClass} style={{ ...inputStyle }} onFocus={onFocus} onBlur={onBlur} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-mono tracking-wider mb-1.5" style={{ color: "var(--prithvi-warm-amber)" }}>
+                            LONGITUDE
+                          </label>
+                          <div className="relative">
+                            <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50 rotate-90" style={{ color: "var(--prithvi-warm-amber)" }} />
+                            <input type="number" step="any" value={lng} onChange={e => setLng(e.target.value)}
+                              placeholder="e.g. 72.9063" required
+                              className={inputClass} style={{ ...inputStyle }} onFocus={onFocus} onBlur={onBlur} />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-mono tracking-wider mb-1.5" style={{ color: "var(--prithvi-warm-amber)" }}>
+                          ELEVATION ABOVE SEA LEVEL (meters)
+                        </label>
+                        <div className="relative">
+                          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" style={{ color: "var(--prithvi-warm-amber)" }} />
+                          <input type="number" step="any" min="0" value={height} onChange={e => setHeight(e.target.value)}
+                            placeholder="e.g. 14 (meters)" required
+                            className={inputClass} style={{ ...inputStyle }} onFocus={onFocus} onBlur={onBlur} />
+                        </div>
+                        <p className="text-[10px] mt-1 opacity-50 prithvi-text-electric">
+                          GPS coordinates will be verified before your application is accepted.
+                        </p>
                       </div>
                     </>
                   )}

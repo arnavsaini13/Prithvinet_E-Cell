@@ -13,6 +13,7 @@ from database import get_db
 from models import User
 from schemas import UserRegisterIn, UserLoginIn, TokenOut, UserOut
 from services.auth_service import hash_password, verify_password, create_access_token
+from services.groq_verify import verify_industry_coords
 from dependencies import get_current_user
 
 router = APIRouter(tags=["Authentication"])
@@ -58,6 +59,22 @@ async def register(
         # Regional officers and industry users require admin approval; all others auto-approved
         approved = assigned_role not in ("regional_officer", "industry_user")
 
+    # For industry users: verify coordinates via Groq before creating the account
+    if assigned_role == "industry_user" and payload.latitude is not None:
+        ok, reason = await verify_industry_coords(
+            name=payload.industry_name or payload.name,
+            location=payload.industry_location or "",
+            region=payload.region or "",
+            lat=payload.latitude,
+            lng=payload.longitude,
+            height=payload.height_above_sea_level or 0.0,
+        )
+        if not ok:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Location verification failed: {reason}",
+            )
+
     user = User(
         name=payload.name,
         email=payload.email,
@@ -66,6 +83,9 @@ async def register(
         region=payload.region,
         industry_name=payload.industry_name,
         industry_location=payload.industry_location,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
+        height_above_sea_level=payload.height_above_sea_level,
         is_approved=approved,
     )
     db.add(user)
