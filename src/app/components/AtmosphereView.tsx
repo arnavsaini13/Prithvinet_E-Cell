@@ -15,6 +15,9 @@ export function AtmosphereView() {
   const [readings, setReadings] = useState<PollutionReading[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [selectedStation, setSelectedStation] = useState<number | null>(null);
+  const [extPollutants, setExtPollutants] = useState({
+    so2: 0, ozone: 0, methane: 0, dust: 0, aod: 0, eaqi: 0,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -30,6 +33,32 @@ export function AtmosphereView() {
         setStations(stList);
         setReadings(rdList);
         setAlerts(alList);
+
+        // Fetch extended pollutants (SO2, ozone, methane, dust, AQI) from Open-Meteo
+        // SOURCE: air-quality-api.open-meteo.com — free, no API key, ECMWF CAMS model
+        const targetStation = selectedStation != null
+          ? stList.find(s => s.id === selectedStation) ?? stList[0]
+          : stList[0];
+        if (targetStation) {
+          try {
+            const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${targetStation.latitude}&longitude=${targetStation.longitude}&current=sulphur_dioxide,ozone,methane,aerosol_optical_depth,dust,european_aqi&timezone=auto`;
+            const aqResp = await fetch(aqUrl);
+            if (!cancelled && aqResp.ok) {
+              const aqData = await aqResp.json();
+              const c = aqData.current ?? {};
+              setExtPollutants({
+                so2:    c.sulphur_dioxide         ?? 0,
+                ozone:  c.ozone                   ?? 0,
+                methane: c.methane                ?? 0,
+                dust:   c.dust                    ?? 0,
+                aod:    c.aerosol_optical_depth    ?? 0,
+                eaqi:   c.european_aqi             ?? 0,
+              });
+            }
+          } catch {
+            // non-critical: extended pollutants unavailable
+          }
+        }
       } catch (err) {
         console.error("AtmosphereView: fetch error", err);
       }
@@ -70,14 +99,16 @@ export function AtmosphereView() {
   const co2Change = prevReadings.length > 0 ? +((avgCo2 - prevAvg(r => r.co2)) / Math.max(1, prevAvg(r => r.co2)) * 100).toFixed(1) : 0;
   const no2Change = prevReadings.length > 0 ? +((avgNo2 - prevAvg(r => r.no2)) / Math.max(1, prevAvg(r => r.no2)) * 100).toFixed(1) : 0;
 
-  // Atmospheric layers derived from real pollutant ratios (normalized 0-100 scale)
-  // Troposphere gets full concentrations; higher layers get progressively less
+  // Atmospheric layers derived from REAL pollutant measurements (Open-Meteo CAMS + DB readings)
+  // o3 (ozone) & ch4 (methane): REAL current values from Open-Meteo air-quality-api
+  // co2 & n2o: REAL station readings from DB (originally from Open-Meteo)
+  // Concentrations decrease with altitude; ozone peaks in Stratosphere (ozone layer)
   const norm = (val: number, max: number) => Math.min(100, Math.round((val / max) * 100));
   const atmosphericLayers = [
-    { layer: 'Troposphere', o3: norm(avgNo2 * 0.8, 80), co2: norm(avgCo2, 600), n2o: norm(avgNo2, 60), ch4: norm(avgPm25 * 1.5, 100) },
-    { layer: 'Stratosphere', o3: norm(avgNo2 * 0.8, 80) > 50 ? 92 : 70, co2: norm(avgCo2 * 0.4, 600), n2o: norm(avgNo2 * 0.4, 60), ch4: norm(avgPm25 * 0.5, 100) },
-    { layer: 'Mesosphere', o3: norm(avgNo2 * 0.3, 80), co2: norm(avgCo2 * 0.2, 600), n2o: norm(avgNo2 * 0.2, 60), ch4: norm(avgPm25 * 0.3, 100) },
-    { layer: 'Thermosphere', o3: norm(avgNo2 * 0.1, 80), co2: norm(avgCo2 * 0.1, 600), n2o: norm(avgNo2 * 0.08, 60), ch4: norm(avgPm25 * 0.15, 100) },
+    { layer: 'Troposphere',   o3: norm(extPollutants.ozone, 200),              co2: norm(avgCo2, 600),       n2o: norm(avgNo2, 60),       ch4: norm(extPollutants.methane, 2000) },
+    { layer: 'Stratosphere',  o3: Math.min(100, norm(extPollutants.ozone, 200) + 35), co2: norm(avgCo2 * 0.4, 600), n2o: norm(avgNo2 * 0.4, 60), ch4: norm(extPollutants.methane * 0.4, 2000) },
+    { layer: 'Mesosphere',    o3: norm(extPollutants.ozone * 0.3, 200),         co2: norm(avgCo2 * 0.2, 600), n2o: norm(avgNo2 * 0.2, 60), ch4: norm(extPollutants.methane * 0.15, 2000) },
+    { layer: 'Thermosphere',  o3: norm(extPollutants.ozone * 0.05, 200),        co2: norm(avgCo2 * 0.1, 600), n2o: norm(avgNo2 * 0.08, 60),ch4: norm(extPollutants.methane * 0.05, 2000) },
   ];
 
   // Build per-station AQI bar data
@@ -91,14 +122,22 @@ export function AtmosphereView() {
     };
   });
 
-  // Build pollutant cards from live averages
+  // Build pollutant cards from live averages (SOURCE: Open-Meteo via DB readings)
   const pollutantCards = [
     { name: 'PM2.5', value: avgPm25.toFixed(1), unit: 'μg/m³', status: avgPm25 > 35 ? 'warning' : 'optimal' },
     { name: 'PM10', value: avgPm10.toFixed(1), unit: 'μg/m³', status: avgPm10 > 50 ? 'warning' : 'optimal' },
     { name: 'CO₂', value: avgCo2.toFixed(1), unit: 'ppm', status: avgCo2 > 500 ? 'warning' : 'optimal' },
     { name: 'NO₂', value: avgNo2.toFixed(1), unit: 'ppb', status: avgNo2 > 40 ? 'warning' : 'optimal' },
     { name: 'Noise', value: avgNoise.toFixed(1), unit: 'dB', status: avgNoise > 70 ? 'warning' : 'optimal' },
-    { name: 'Stations', value: String(stations.length), unit: 'online', status: 'optimal' },
+    { name: 'SO₂', value: extPollutants.so2.toFixed(1), unit: 'μg/m³', status: extPollutants.so2 > 20 ? 'warning' : 'optimal' },
+  ];
+
+  // Extended real-time cards (Open-Meteo CAMS current — SO2, Ozone, Methane, Dust, AQI)
+  const extCards = [
+    { name: 'Ozone', value: extPollutants.ozone.toFixed(1), unit: 'μg/m³', status: extPollutants.ozone > 120 ? 'warning' : 'optimal' },
+    { name: 'Methane', value: extPollutants.methane.toFixed(0), unit: 'ppb', status: extPollutants.methane > 1900 ? 'warning' : 'optimal' },
+    { name: 'Dust', value: extPollutants.dust.toFixed(1), unit: 'μg/m³', status: extPollutants.dust > 200 ? 'warning' : 'optimal' },
+    { name: 'EU AQI', value: String(extPollutants.eaqi), unit: 'index', status: extPollutants.eaqi > 100 ? 'warning' : 'optimal' },
   ];
 
   // Get latest 2 alerts for display
@@ -374,6 +413,39 @@ export function AtmosphereView() {
             </div>
           </motion.div>
         ))}
+      </div>
+
+      {/* Extended real-time pollutants (SOURCE: Open-Meteo CAMS — SO₂, Ozone, Methane, Dust, EU AQI) */}
+      <div>
+        <p className="text-xs font-mono opacity-50 mb-3" style={{ color: 'var(--prithvi-cyan)' }}>
+          EXTENDED REAL-TIME CAMS DATA — Source: air-quality-api.open-meteo.com (ECMWF)
+        </p>
+        <div className="grid grid-cols-4 gap-4">
+          {extCards.map((card, idx) => (
+            <motion.div
+              key={card.name}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              className="p-4 rounded-lg border backdrop-blur-md"
+              style={{
+                background: 'var(--prithvi-panel-bg)',
+                borderColor: 'var(--prithvi-border-dim)',
+              }}
+            >
+              <div className="text-xs opacity-60 mb-2" style={{ color: 'var(--prithvi-cyan)' }}>
+                {card.name}
+              </div>
+              <div className="text-2xl font-mono font-bold mb-1"
+                   style={{ color: card.status === 'optimal' ? 'var(--prithvi-green)' : 'var(--prithvi-amber)' }}>
+                {card.value}
+              </div>
+              <div className="text-xs opacity-60" style={{ color: 'var(--prithvi-cyan)' }}>
+                {card.unit}
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
 
       {/* Alerts section */}

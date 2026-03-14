@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Satellite, Wind, Waves, Leaf, Globe, Activity, Droplets, Volume2, AlertTriangle, Settings, Bell, User, Database, Map, TrendingUp, Clock, LogOut, Search, X } from "lucide-react";
+import { Satellite, Wind, Waves, Leaf, Globe, Activity, Droplets, Volume2, AlertTriangle, Settings, Bell, User, Database, Map, TrendingUp, Clock, LogOut, Search, X, Factory } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect, useRef } from "react";
 import "../../styles/prithvi-theme.css";
@@ -55,6 +55,7 @@ export function Root() {
     { path: "/dashboard/atmosphere", label: "Atmosphere", icon: Wind, keywords: ["atmosphere", "air", "co2", "no2", "pm10"] },
     { path: "/dashboard/ocean", label: "Ocean Systems", icon: Waves, keywords: ["ocean", "water", "marine", "sea"] },
     { path: "/dashboard/biodiversity", label: "Biodiversity", icon: Leaf, keywords: ["biodiversity", "species", "ecosystem", "habitat"] },
+    { path: "/dashboard/industries", label: "Industries", icon: Factory, keywords: ["industry", "compliance", "factory", "pollution", "cpcb", "emissions"] },
     { path: "/dashboard/data-archive", label: "Data Archive", icon: Database, keywords: ["data", "archive", "export", "dataset"] },
   ];
 

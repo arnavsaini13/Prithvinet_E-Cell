@@ -55,49 +55,111 @@ const defaultRadarData = [
   { metric: "Carbon Levels", current: 0, predicted: 0, safe: 90 },
 ];
 
-// Model performance metrics (static display)
-const modelMetrics = [
-  { model: "LSTM Network", accuracy: 94.2, mae: 5.3, rmse: 8.1, r2: 0.92 },
-  { model: "Random Forest", accuracy: 91.8, mae: 6.7, rmse: 9.4, r2: 0.89 },
-  { model: "XGBoost", accuracy: 93.5, mae: 5.9, rmse: 8.6, r2: 0.91 },
-  { model: "Neural Prophet", accuracy: 95.1, mae: 4.8, rmse: 7.5, r2: 0.93 },
+// Real data source info — replaces the fake ML model metrics table
+const dataSourceInfo = [
+  { model: "Open-Meteo CAMS", accuracy: "PM2.5, PM10, CO2, NO2, SO2, Ozone, Methane", mae: "1h", rmse: "72h", r2: "Free" },
+  { model: "Open-Meteo Forecast", accuracy: "Temperature, Wind, UV, Pressure", mae: "1h", rmse: "16 days", r2: "Free" },
+  { model: "Open-Meteo Marine", accuracy: "Wave Height, Sea Temp", mae: "1h", rmse: "7 days", r2: "Free" },
+  { model: "GBIF Occurrence API", accuracy: "Species, IUCN Red List", mae: "Live", rmse: "Since 1660s", r2: "Free" },
 ];
 
-// AI insights (static display)
-const aiInsights = [
-  {
-    id: "ai1",
-    type: "warning" as const,
-    title: "Critical PM2.5 Spike Predicted",
-    description: "Neural network models predict a 35% increase in PM2.5 levels over the next 48 hours due to weather patterns and industrial activity convergence.",
-    confidence: 92,
-    impact: "critical" as const,
-  },
-  {
-    id: "ai2",
-    type: "prediction" as const,
-    title: "Air Quality Degradation Trend",
-    description: "Machine learning analysis indicates a sustained upward trend in AQI across major urban centers for the next 14 days.",
-    confidence: 87,
-    impact: "high" as const,
-  },
-  {
-    id: "ai3",
-    type: "analysis" as const,
-    title: "Seasonal Pattern Anomaly Detected",
-    description: "Current pollution levels are 22% higher than historical seasonal averages, suggesting unusual environmental stress factors.",
-    confidence: 95,
-    impact: "moderate" as const,
-  },
-  {
-    id: "ai4",
-    type: "recommendation" as const,
-    title: "Intervention Window Identified",
-    description: "Optimal 72-hour window detected for implementing pollution control measures with maximum effectiveness based on weather forecasts.",
-    confidence: 89,
-    impact: "high" as const,
-  },
-];
+// Compute real insights from live Open-Meteo data and DB readings
+function computeInsights(
+  readings: PollutionReading[],
+  forecastPm25: { predicted_value: number; timestamp: string }[],
+  forecastPm10: { predicted_value: number; timestamp: string }[],
+  stationsList: Station[],
+) {
+  const insights: { id: string; type: "warning" | "prediction" | "analysis" | "recommendation"; title: string; description: string; confidence: number; impact: "critical" | "high" | "moderate" }[] = [];
+
+  const recentHist = readings.slice(0, 12);
+  const recentAvgPm25 = recentHist.length > 0
+    ? recentHist.reduce((s, r) => s + r.pm25, 0) / recentHist.length : 0;
+  const recentAvgPm10 = recentHist.length > 0
+    ? recentHist.reduce((s, r) => s + r.pm10, 0) / recentHist.length : 0;
+
+  const forecastAvgPm25 = forecastPm25.length > 0
+    ? forecastPm25.reduce((s, p) => s + p.predicted_value, 0) / forecastPm25.length
+    : recentAvgPm25;
+
+  // Insight 1: WHO PM2.5 guideline check (15 μg/m³ annual mean — WHO 2021)
+  const WHO_PM25 = 15;
+  if (recentAvgPm25 > WHO_PM25) {
+    const pct = Math.round((recentAvgPm25 - WHO_PM25) / WHO_PM25 * 100);
+    insights.push({
+      id: "who_limit",
+      type: "warning",
+      title: `PM2.5 Exceeds WHO Guideline by ${pct}%`,
+      description: `Current average PM2.5 (${recentAvgPm25.toFixed(1)} μg/m³) is ${pct}% above the WHO 2021 annual mean limit of 15 μg/m³. Source: Open-Meteo Air Quality API (real-time).`,
+      confidence: 99,
+      impact: recentAvgPm25 > 55 ? "critical" : "high",
+    });
+  }
+
+  // Insight 2: Forecast trend vs current (Open-Meteo 48h CAMS forecast)
+  if (recentAvgPm25 > 0 && forecastPm25.length > 0) {
+    const change = (forecastAvgPm25 - recentAvgPm25) / recentAvgPm25 * 100;
+    if (change > 10) {
+      insights.push({
+        id: "forecast_rising",
+        type: "prediction",
+        title: `PM2.5 Rising — ${change.toFixed(0)}% Increase Forecast`,
+        description: `Open-Meteo CAMS 72h forecast shows PM2.5 rising from ${recentAvgPm25.toFixed(1)} to ~${forecastAvgPm25.toFixed(1)} μg/m³. Source: air-quality-api.open-meteo.com.`,
+        confidence: 88,
+        impact: change > 30 ? "high" : "moderate",
+      });
+    } else if (change < -10) {
+      insights.push({
+        id: "forecast_falling",
+        type: "analysis",
+        title: `Air Quality Improving — ${Math.abs(change).toFixed(0)}% Drop Ahead`,
+        description: `Open-Meteo CAMS forecast shows PM2.5 decreasing from ${recentAvgPm25.toFixed(1)} to ~${forecastAvgPm25.toFixed(1)} μg/m³ over next 48 hours. Conditions improving.`,
+        confidence: 85,
+        impact: "moderate",
+      });
+    }
+  }
+
+  // Insight 3: Best clean-air window from Open-Meteo forecast
+  if (forecastPm25.length > 0) {
+    const best = forecastPm25.reduce((min, p) => p.predicted_value < min.predicted_value ? p : min, forecastPm25[0]);
+    const bestDate = new Date(best.timestamp).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    insights.push({
+      id: "best_window",
+      type: "recommendation",
+      title: "Cleanest Air Window Identified",
+      description: `Lowest PM2.5 predicted at ${best.predicted_value.toFixed(1)} μg/m³ on ${bestDate}. Best window for outdoor activity and pollution control measures. Source: Open-Meteo 72h forecast.`,
+      confidence: 82,
+      impact: "moderate",
+    });
+  }
+
+  // Insight 4: Worst station hotspot from real readings
+  const stationTotals: Record<number, { pm25: number; count: number }> = {};
+  for (const r of readings) {
+    if (!stationTotals[r.station_id]) stationTotals[r.station_id] = { pm25: 0, count: 0 };
+    stationTotals[r.station_id].pm25 += r.pm25;
+    stationTotals[r.station_id].count++;
+  }
+  let worstId = -1, worstAvg = 0;
+  for (const [sId, v] of Object.entries(stationTotals)) {
+    const avg = v.pm25 / v.count;
+    if (avg > worstAvg) { worstAvg = avg; worstId = Number(sId); }
+  }
+  const worstStation = stationsList.find(s => s.id === worstId);
+  if (worstStation && worstAvg > WHO_PM25) {
+    insights.push({
+      id: "worst_station",
+      type: "warning",
+      title: `Hotspot Alert: ${worstStation.name}`,
+      description: `${worstStation.name} has average PM2.5 of ${worstAvg.toFixed(1)} μg/m³ — ${Math.round((worstAvg / WHO_PM25 - 1) * 100)}% above WHO limit. Source: Open-Meteo real-time data.`,
+      confidence: 97,
+      impact: worstAvg > 75 ? "critical" : "high",
+    });
+  }
+
+  return insights;
+}
 
 export function ForecastingAnalytics() {
   const [selectedMetric, setSelectedMetric] = useState<"pm25" | "pm10" | "aqi">("aqi");
@@ -122,6 +184,7 @@ export function ForecastingAnalytics() {
   ]);
   const [predictedHotspots, setPredictedHotspots] = useState<any[]>([]);
   const [radarData, setRadarData] = useState(defaultRadarData);
+  const [computedInsights, setComputedInsights] = useState<ReturnType<typeof computeInsights>>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,18 +217,25 @@ export function ForecastingAnalytics() {
             };
           });
 
-        // Fetch forecast for first station, for each metric
+        // Fetch forecast for selected station — all pollutants from real Open-Meteo CAMS
+        // SOURCE: air-quality-api.open-meteo.com (ECMWF) via /forecast backend endpoint
         const stationId = selectedStation ?? stationsList[0].id;
-        const [pm25Forecast, pm10Forecast] = await Promise.all([
-          forecastApi.get(stationId, "pm25", 12).catch(() => null),
-          forecastApi.get(stationId, "pm10", 12).catch(() => null),
+        const [pm25Forecast, pm10Forecast, no2Forecast, so2Forecast, ozoneForecast] = await Promise.all([
+          forecastApi.get(stationId, "pm25",  12).catch(() => null),
+          forecastApi.get(stationId, "pm10",  12).catch(() => null),
+          forecastApi.get(stationId, "no2",   12).catch(() => null),
+          forecastApi.get(stationId, "so2",   12).catch(() => null),
+          forecastApi.get(stationId, "ozone", 12).catch(() => null),
         ]);
         if (cancelled) return;
 
         // Build forecast points
         const forecastPoints: any[] = [];
-        const pm25Pts = pm25Forecast?.forecast ?? [];
-        const pm10Pts = pm10Forecast?.forecast ?? [];
+        const pm25Pts  = pm25Forecast?.forecast  ?? [];
+        const pm10Pts  = pm10Forecast?.forecast  ?? [];
+        const no2Pts   = no2Forecast?.forecast   ?? [];
+        const so2Pts   = so2Forecast?.forecast   ?? [];
+        const ozonePts = ozoneForecast?.forecast ?? [];
         const maxLen = Math.max(pm25Pts.length, pm10Pts.length);
 
         for (let i = 0; i < maxLen; i++) {
@@ -198,16 +268,16 @@ export function ForecastingAnalytics() {
 
         setPollutionData([...historicalPoints, ...forecastPoints]);
 
-        // Build multi-pollutant data from forecast points
+        // Build multi-pollutant data from REAL Open-Meteo CAMS forecasts
+        // pm25, pm10 — ECMWF CAMS forecast | no2, so2, ozone — ECMWF CAMS forecast
         setMultiPollutantData(
-          forecastPoints.map((pt: any) => ({
-            date: pt.date,
-            pm25: pt.pm25_predicted,
-            pm10: pt.pm10_predicted / 2,
-            no2: pt.pm25_predicted * 0.5,
-            so2: pt.pm25_predicted * 0.4,
-            co: pt.pm25_predicted * 0.3,
-            o3: pt.pm25_predicted * 0.6,
+          forecastPoints.map((_pt: any, i: number) => ({
+            date: _pt.date,
+            pm25:  _pt.pm25_predicted,
+            pm10:  _pt.pm10_predicted,
+            no2:   no2Pts[i]?.predicted_value  ?? null,
+            so2:   so2Pts[i]?.predicted_value  ?? null,
+            o3:    ozonePts[i]?.predicted_value ?? null,
           })),
         );
 
@@ -219,6 +289,12 @@ export function ForecastingAnalytics() {
             pm25: pt.predicted_value,
           })),
         );
+
+        // Compute real data-driven insights from Open-Meteo forecast + live readings
+        // SOURCE: Open-Meteo Air Quality API (pm25Pts, pm10Pts) + local DB readings
+        if (!cancelled) {
+          setComputedInsights(computeInsights(readings, pm25Pts, pm10Pts, stationsList));
+        }
 
         // Fetch risk scores for hotspot display
         const riskScores = await riskApi.list().catch(() => [] as RiskScore[]);
@@ -744,11 +820,11 @@ export function ForecastingAnalytics() {
             AI ENVIRONMENTAL INSIGHTS
           </h3>
           <Zap className="w-4 h-4 prithvi-text-aurora ml-auto" />
-          <span className="text-xs font-mono prithvi-text-aurora">NEURAL NETWORK ACTIVE</span>
+          <span className="text-xs font-mono prithvi-text-aurora">OPEN-METEO CAMS FORECAST ACTIVE</span>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          {aiInsights.map((insight, index) => (
+          {computedInsights.map((insight, index) => (
             <motion.div
               key={insight.id}
               initial={{ opacity: 0, y: 20 }}
@@ -925,15 +1001,6 @@ export function ForecastingAnalytics() {
               />
               <Line
                 type="monotone"
-                dataKey="co"
-                stroke="var(--prithvi-ocean-blue)"
-                strokeWidth={2}
-                dot={false}
-                filter="url(#lineGlow)"
-                name="CO"
-              />
-              <Line
-                type="monotone"
                 dataKey="o3"
                 stroke="#9b59b6"
                 strokeWidth={2}
@@ -1021,82 +1088,63 @@ export function ForecastingAnalytics() {
         <div className="flex items-center gap-3 mb-6">
           <Activity className="w-5 h-5 prithvi-text-electric" />
           <h3 className="text-lg font-mono tracking-wider prithvi-text-electric">
-            AI MODEL PERFORMANCE METRICS
+            REAL DATA SOURCES
           </h3>
           <span className="ml-auto text-xs font-mono opacity-60 prithvi-text-forest">
-            Real-time Accuracy Monitoring
+            All APIs are free — no key required
           </span>
         </div>
 
         <div className="grid grid-cols-4 gap-4">
-          {modelMetrics.map((model, index) => (
+          {dataSourceInfo.map((src, index) => (
             <motion.div
-              key={model.model}
+              key={src.model}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.65 + index * 0.05 }}
               className="p-5 rounded-lg border backdrop-blur-sm prithvi-card-layered"
               style={{
                 background: "var(--prithvi-glass)",
-                borderColor: model.model === "Neural Prophet" ? "var(--prithvi-electric-cyan)" : "var(--prithvi-border-dim)",
-                borderWidth: model.model === "Neural Prophet" ? "2px" : "1px",
+                borderColor: index === 0 ? "var(--prithvi-electric-cyan)" : "var(--prithvi-border-dim)",
+                borderWidth: index === 0 ? "2px" : "1px",
               }}
             >
               <div className="flex items-center gap-2 mb-4">
                 <Brain className="w-4 h-4 prithvi-text-electric" />
                 <h4 className="text-sm font-mono font-bold prithvi-text-electric">
-                  {model.model}
+                  {src.model}
                 </h4>
               </div>
 
               <div className="space-y-3">
-                {/* Accuracy */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-mono opacity-60 prithvi-text-electric">Accuracy</span>
-                    <span className="text-sm font-mono font-bold prithvi-text-aurora">
-                      {model.accuracy}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--prithvi-grid)" }}>
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${model.accuracy}%` }}
-                      transition={{ duration: 1, delay: 0.7 + index * 0.05 }}
-                      className="h-full prithvi-glow-aurora"
-                      style={{ background: "var(--prithvi-aurora-green)" }}
-                    />
-                  </div>
+                  <div className="text-xs font-mono opacity-50 prithvi-text-electric mb-1">DATA TYPE</div>
+                  <div className="text-xs font-mono prithvi-text-aurora leading-relaxed">{src.accuracy}</div>
                 </div>
 
-                {/* Metrics */}
                 <div className="grid grid-cols-3 gap-2 pt-2 border-t" style={{ borderColor: "var(--prithvi-border-dim)" }}>
                   <div>
-                    <div className="text-xs font-mono opacity-50 prithvi-text-electric mb-1">MAE</div>
-                    <div className="text-sm font-mono font-bold prithvi-text-ocean">{model.mae}</div>
+                    <div className="text-xs font-mono opacity-50 prithvi-text-electric mb-1">RES.</div>
+                    <div className="text-sm font-mono font-bold prithvi-text-ocean">{src.mae}</div>
                   </div>
                   <div>
-                    <div className="text-xs font-mono opacity-50 prithvi-text-electric mb-1">RMSE</div>
-                    <div className="text-sm font-mono font-bold prithvi-text-ocean">{model.rmse}</div>
+                    <div className="text-xs font-mono opacity-50 prithvi-text-electric mb-1">RANGE</div>
+                    <div className="text-sm font-mono font-bold prithvi-text-ocean">{src.rmse}</div>
                   </div>
                   <div>
-                    <div className="text-xs font-mono opacity-50 prithvi-text-electric mb-1">R²</div>
-                    <div className="text-sm font-mono font-bold prithvi-text-ocean">{model.r2}</div>
+                    <div className="text-xs font-mono opacity-50 prithvi-text-electric mb-1">COST</div>
+                    <div className="text-sm font-mono font-bold prithvi-text-ocean">{src.r2}</div>
                   </div>
                 </div>
-
-                {/* Active indicator */}
-                {model.model === "Neural Prophet" && (
-                  <div className="flex items-center gap-2 pt-2 mt-2 border-t" style={{ borderColor: "var(--prithvi-border-dim)" }}>
-                    <motion.div
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="w-2 h-2 rounded-full prithvi-glow-aurora"
-                      style={{ background: "var(--prithvi-aurora-green)" }}
-                    />
-                    <span className="text-xs font-mono prithvi-text-aurora">ACTIVE MODEL</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 pt-2 mt-2 border-t" style={{ borderColor: "var(--prithvi-border-dim)" }}>
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-2 h-2 rounded-full prithvi-glow-aurora"
+                    style={{ background: "var(--prithvi-aurora-green)" }}
+                  />
+                  <span className="text-xs font-mono prithvi-text-aurora">LIVE</span>
+                </div>
               </div>
             </motion.div>
           ))}

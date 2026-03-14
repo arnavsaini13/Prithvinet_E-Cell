@@ -116,6 +116,22 @@ class IndustryOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class EnrichedIndustryOut(BaseModel):
+    """Industry with live air quality metrics from Open-Meteo CAMS."""
+    id: int
+    name: str
+    location: str
+    latitude: float
+    longitude: float
+    compliance_score: float
+    pm25: float
+    pm10: float
+    so2: float
+    no2: float
+    eaqi: float
+    source: str
+
+
 # ---------- Heatmap ----------
 
 class HeatmapPoint(BaseModel):

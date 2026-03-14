@@ -13,10 +13,8 @@ const ROLE_MAP: Record<string, string> = {
 };
 
 const roles = [
-  { id: 'admin', name: 'Admin', description: 'Full system access', requiresApproval: true },
-  { id: 'regional', name: 'Regional Officer', description: 'Regional monitoring', requiresApproval: true },
-  { id: 'industry', name: 'Industry User', description: 'Sector-specific data', requiresApproval: true },
   { id: 'citizen', name: 'Citizen', description: 'Public environmental data', requiresApproval: false },
+  { id: 'industry', name: 'Industry User', description: 'Sector-specific data', requiresApproval: false },
 ];
 
 export function Register() {

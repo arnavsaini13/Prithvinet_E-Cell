@@ -191,11 +191,28 @@ export interface Industry {
   compliance_score: number;
 }
 
+export interface EnrichedIndustry {
+  id: number;
+  name: string;
+  location: string;
+  latitude: number;
+  longitude: number;
+  compliance_score: number;
+  pm25: number;
+  pm10: number;
+  so2: number;
+  no2: number;
+  eaqi: number;
+  source: string;
+}
+
 export const industriesApi = {
   list: (minCompliance?: number) =>
     request<Industry[]>(
       `/industries${minCompliance != null ? `?min_compliance=${minCompliance}` : ""}`,
     ),
+  /** Live-enriched industry data — compliance score + PM2.5/PM10/SO2/NO2/AQI from Open-Meteo */
+  enriched: () => request<EnrichedIndustry[]>("/industries/enriched"),
 };
 
 // ── GBIF Biodiversity (free, no API key) ─────────
@@ -294,9 +311,9 @@ export const openMeteoApi = {
     return { current: data.current };
   },
 
-  /** Fetch air quality for a specific station */
+  /** Fetch air quality for a specific station (includes extended pollutants: SO2, ozone, methane, dust, AQI) */
   airQuality: async (lat: number, lng: number): Promise<any> => {
-    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=pm10,pm2_5,carbon_dioxide,nitrogen_dioxide,ozone&timezone=auto`;
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=pm10,pm2_5,carbon_dioxide,nitrogen_dioxide,sulphur_dioxide,ozone,methane,aerosol_optical_depth,dust,uv_index,european_aqi&timezone=auto`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Open-Meteo air quality fetch failed");
     return res.json();

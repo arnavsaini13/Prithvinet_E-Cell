@@ -7,6 +7,7 @@ import { PollutionMap } from "./components/PollutionMap";
 import { ForecastingAnalytics } from "./components/ForecastingAnalytics";
 import { PollutionTimeMachine } from "./components/PollutionTimeMachine";
 import { DataArchive } from "./components/DataArchive";
+import { IndustrialView } from "./components/IndustrialView";
 import { Root } from "./components/Root";
 import { Login } from "./components/Login";
 import { Register } from "./components/Register";
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       { path: "forecasting", Component: ForecastingAnalytics },
       { path: "time-machine", Component: PollutionTimeMachine },
       { path: "data-archive", Component: DataArchive },
+      { path: "industries", Component: IndustrialView },
     ],
   },
 ]);

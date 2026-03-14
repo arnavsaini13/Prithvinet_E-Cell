@@ -25,6 +25,7 @@ from routes.alerts import router as alerts_router
 from routes.forecast import router as forecast_router
 from routes.industries import router as industries_router
 from services.real_data_fetcher import backfill_historical_data, run_periodic_fetcher
+from services.compliance_engine import update_all_compliance_scores, run_periodic_compliance_updater
 
 
 # ──────────────────────────────────────────────
@@ -93,15 +94,27 @@ async def lifespan(app: FastAPI):
     # Start periodic real-data fetcher as background task
     fetcher_task = asyncio.create_task(run_periodic_fetcher())
 
+    # Compute real compliance scores from Open-Meteo on startup
+    try:
+        async with async_session() as db:
+            await update_all_compliance_scores(db)
+    except Exception as e:
+        print(f"  WARNING: Compliance score update failed: {e}")
+
+    # Start periodic compliance score updater (every 30 min)
+    compliance_task = asyncio.create_task(run_periodic_compliance_updater())
+
     print("PrithviNet backend is ready.")
     yield
 
-    # Cancel the periodic fetcher on shutdown
+    # Cancel background tasks on shutdown
     fetcher_task.cancel()
-    try:
-        await fetcher_task
-    except asyncio.CancelledError:
-        pass
+    compliance_task.cancel()
+    for task in (fetcher_task, compliance_task):
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
     print("Shutting down PrithviNet backend.")
 
 
@@ -122,6 +135,8 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:5173",  # Vite dev server
+        "http://localhost:5174",  # Vite fallback port
+        "http://localhost:5175",
     ],
     allow_credentials=True,
     allow_methods=["*"],

@@ -1,7 +1,12 @@
 """
 PrithviNet - Forecast API
-Endpoint for AI-based short-term pollution forecasting.
-Access: regional_officer+ (regional analytics)
+=========================
+Air pollutants (pm25, pm10, co2, no2):
+  Real 72-hour hourly forecast from Open-Meteo Air Quality API (ECMWF/CAMS model).
+  SOURCE: https://air-quality-api.open-meteo.com  — free, no API key required.
+
+Water / noise (ph, turbidity, dissolved_oxygen, noise_level):
+  Linear extrapolation from recent DB readings (no free real-time API available).
 """
 
 from fastapi import APIRouter, Depends, Query
@@ -9,40 +14,60 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models import PollutionReading
+from models import MonitoringStation, PollutionReading
 from schemas import ForecastOut
-from services.forecasting_engine import generate_forecast
+from services.forecasting_engine import fetch_openmeteo_forecast, _linear_forecast
 from dependencies import require_officer
 
 router = APIRouter(tags=["Forecast"])
+
+_VALID_POLLUTANTS = {
+    "pm25", "pm10", "co2", "no2", "so2", "ozone", "methane", "dust",
+    "ph", "turbidity", "dissolved_oxygen", "noise_level",
+}
 
 
 @router.get("/forecast", response_model=ForecastOut)
 async def get_forecast(
     station_id: int = Query(...),
-    pollutant: str = Query(default="pm25"),
-    steps: int = Query(default=12, le=48),
+    pollutant: str  = Query(default="pm25"),
+    steps:     int  = Query(default=12, le=48),
     db: AsyncSession = Depends(get_db),
     _user=Depends(require_officer),
 ):
     """
-    Generate a short-term forecast for the given station and pollutant.
+    Return a short-term forecast for the given station and pollutant.
+
+    pm25 / pm10 / co2 / no2 / so2 / ozone / methane / dust  →  real Open-Meteo Air Quality forecast (ECMWF CAMS)
+    ph / turbidity / dissolved_oxygen / noise_level  →  linear extrapolation from DB
+
     Requires regional_officer or admin role.
     """
-    valid_pollutants = {
-        "pm25", "pm10", "co2", "no2", "ph", "turbidity",
-        "dissolved_oxygen", "noise_level",
-    }
-    if pollutant not in valid_pollutants:
+    if pollutant not in _VALID_POLLUTANTS:
         pollutant = "pm25"
 
+    # ── Air pollutants: real Open-Meteo forecast ─────────────────────────────
+    if pollutant in ("pm25", "pm10", "co2", "no2", "so2", "ozone", "methane", "dust", "aod"):
+        station = await db.get(MonitoringStation, station_id)
+        if station:
+            points = await fetch_openmeteo_forecast(
+                station.latitude, station.longitude, pollutant, steps
+            )
+            if points:
+                return ForecastOut(
+                    station_id=station_id,
+                    pollutant=pollutant,
+                    forecast=points,
+                )
+
+    # ── Water / noise: linear regression fallback ────────────────────────────
     stmt = (
         select(PollutionReading)
         .where(PollutionReading.station_id == station_id)
         .order_by(PollutionReading.timestamp.desc())
         .limit(30)
     )
-    result = await db.execute(stmt)
+    result   = await db.execute(stmt)
     readings = result.scalars().all()
 
     reading_dicts = [
@@ -55,7 +80,7 @@ async def get_forecast(
         for r in reversed(readings)
     ]
 
-    forecast_data = generate_forecast(
+    forecast_data = _linear_forecast(
         recent_readings=reading_dicts,
         pollutant=pollutant,
         station_id=station_id,
