@@ -454,7 +454,7 @@ export function IndustrialView() {
         />
         <Wind className="w-4 h-4 prithvi-text-electric" />
         <span className="prithvi-text-aurora">
-          SOURCE: Open-Meteo Air Quality API (ECMWF CAMS) — real-time PM2.5, PM10, SO2, NO2 at each facility's GPS coordinates
+          SOURCE: WAQI/CPCB real ground-level monitoring stations (primary) — Open-Meteo CAMS ~44km fallback
         </span>
         <span className="opacity-40 ml-auto">Compliance = CPCB NAAQS 2009 + WHO 2021</span>
       </div>
@@ -656,7 +656,7 @@ export function IndustrialView() {
                 <th className="pb-3 pr-4">PM10 μg/m³</th>
                 <th className="pb-3 pr-4">SO₂ μg/m³</th>
                 <th className="pb-3 pr-4">NO₂ μg/m³</th>
-                <th className="pb-3 pr-4">EU AQI</th>
+                <th className="pb-3 pr-4">AQI</th>
                 <th className="pb-3">COMPLIANCE</th>
                 {isOfficer && <th className="pb-3 pl-4">ACTIONS</th>}
               </tr>
@@ -752,7 +752,7 @@ export function IndustrialView() {
         </div>
 
         <div className="mt-4 pt-4 border-t text-xs font-mono opacity-50 prithvi-text-forest" style={{ borderColor: "var(--prithvi-border-dim)" }}>
-          Data source: Open-Meteo Air Quality API (ECMWF CAMS global model) — fetched at each facility's real GPS coordinates.
+          Data source: WAQI/CPCB real monitoring stations (primary) → Open-Meteo CAMS fallback.
           Compliance computed against CPCB NAAQS 2009 annual limits and WHO 2021 guidelines. Updated every 30 minutes.
         </div>
       </motion.div>
