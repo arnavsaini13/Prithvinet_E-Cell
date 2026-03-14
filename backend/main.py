@@ -10,12 +10,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from sqlalchemy import select, text, update
 
 # Ensure backend root is on the import path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from database import init_db, async_session
+from database import init_db, async_session, engine
 from models import MonitoringStation, Industry, Complaint
 
 from routes.auth import router as auth_router
@@ -51,6 +51,26 @@ SEED_INDUSTRIES = [
     {"name": "NTPC Thermal Power", "location": "Singrauli, MP", "compliance_score": 55.7},
 ]
 
+# Geographic region assignment for each industry (mapped to nearest station region)
+INDUSTRY_REGIONS = {
+    "Tata Steel Works":   "Kolkata",
+    "Reliance Refinery":  "Mumbai",
+    "Hindalco Aluminium": "Delhi",
+    "Vedanta Smelter":    "Chennai",
+    "ACC Cement Plant":   "Bangalore",
+    "NTPC Thermal Power": "Raipur",
+}
+
+
+async def run_migrations():
+    """Apply DB migrations that cannot be handled by create_all (e.g. adding columns)."""
+    async with engine.begin() as conn:
+        # Add `region` column to industries table if it doesn't exist yet
+        await conn.execute(text(
+            "ALTER TABLE industries ADD COLUMN IF NOT EXISTS region VARCHAR(100) DEFAULT ''"
+        ))
+        print("  [Migration] industries.region column ensured.")
+
 
 async def seed_data():
     """Insert seed stations and industries, adding any missing ones."""
@@ -75,6 +95,14 @@ async def seed_data():
             await db.commit()
             print(f"  Seeded {len(SEED_INDUSTRIES)} industries.")
 
+        # Always ensure industry regions are set (idempotent)
+        for name, region in INDUSTRY_REGIONS.items():
+            await db.execute(
+                update(Industry).where(Industry.name == name).values(region=region)
+            )
+        await db.commit()
+        print("  Industry regions assigned.")
+
 
 # ──────────────────────────────────────────────
 # Application lifespan
@@ -84,6 +112,7 @@ async def lifespan(app: FastAPI):
     """Run setup on startup, cleanup on shutdown."""
     print("Initializing database...")
     await init_db()
+    await run_migrations()
     await seed_data()
 
     # Historical backfill from Open-Meteo (once, idempotent)

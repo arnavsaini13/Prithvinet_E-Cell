@@ -6,7 +6,7 @@ import { CommandPanel } from "./CommandPanel";
 import { CircularIndicator } from "./CircularIndicator";
 import { RealTimeChart } from "./RealTimeChart";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import { pollutionApi, stationsApi, alertsApi } from "../../api/client";
+import { pollutionApi, stationsApi, alertsApi, openMeteoApi } from "../../api/client";
 import type { PollutionReading, Station, Alert } from "../../api/client";
 import { StationSelector } from "./StationSelector";
 
@@ -33,6 +33,7 @@ export function AtmosphereView() {
         setStations(stList);
         setReadings(rdList);
         setAlerts(alList);
+
 
         // Fetch extended pollutants (SO2, ozone, methane, dust, AQI) from Open-Meteo
         // SOURCE: air-quality-api.open-meteo.com — free, no API key, ECMWF CAMS model
@@ -99,16 +100,16 @@ export function AtmosphereView() {
   const co2Change = prevReadings.length > 0 ? +((avgCo2 - prevAvg(r => r.co2)) / Math.max(1, prevAvg(r => r.co2)) * 100).toFixed(1) : 0;
   const no2Change = prevReadings.length > 0 ? +((avgNo2 - prevAvg(r => r.no2)) / Math.max(1, prevAvg(r => r.no2)) * 100).toFixed(1) : 0;
 
-  // Atmospheric layers derived from REAL pollutant measurements (Open-Meteo CAMS + DB readings)
-  // o3 (ozone) & ch4 (methane): REAL current values from Open-Meteo air-quality-api
-  // co2 & n2o: REAL station readings from DB (originally from Open-Meteo)
-  // Concentrations decrease with altitude; ozone peaks in Stratosphere (ozone layer)
-  const norm = (val: number, max: number) => Math.min(100, Math.round((val / max) * 100));
-  const atmosphericLayers = [
-    { layer: 'Troposphere',   o3: norm(extPollutants.ozone, 200),              co2: norm(avgCo2, 600),       n2o: norm(avgNo2, 60),       ch4: norm(extPollutants.methane, 2000) },
-    { layer: 'Stratosphere',  o3: Math.min(100, norm(extPollutants.ozone, 200) + 35), co2: norm(avgCo2 * 0.4, 600), n2o: norm(avgNo2 * 0.4, 60), ch4: norm(extPollutants.methane * 0.4, 2000) },
-    { layer: 'Mesosphere',    o3: norm(extPollutants.ozone * 0.3, 200),         co2: norm(avgCo2 * 0.2, 600), n2o: norm(avgNo2 * 0.2, 60), ch4: norm(extPollutants.methane * 0.15, 2000) },
-    { layer: 'Thermosphere',  o3: norm(extPollutants.ozone * 0.05, 200),        co2: norm(avgCo2 * 0.1, 600), n2o: norm(avgNo2 * 0.08, 60),ch4: norm(extPollutants.methane * 0.05, 2000) },
+  // WHO 2021 Air Quality Guidelines (24-hour mean, µg/m³)
+  // Values show current reading as % of safe limit: 100 = at limit, >100 = exceeding
+  const WHO = { PM25: 15, PM10: 45, NO2: 25, SO2: 40, O3: 100 };
+  const safeRatio = (val: number, limit: number) => Math.min(200, +(val / limit * 100).toFixed(1));
+  const surfaceComposition = [
+    { pollutant: 'PM2.5', current: safeRatio(avgPm25, WHO.PM25), safe: 100 },
+    { pollutant: 'PM10',  current: safeRatio(avgPm10, WHO.PM10),  safe: 100 },
+    { pollutant: 'NO₂',  current: safeRatio(avgNo2,  WHO.NO2),   safe: 100 },
+    { pollutant: 'SO₂',  current: safeRatio(extPollutants.so2, WHO.SO2),   safe: 100 },
+    { pollutant: 'O₃',   current: safeRatio(extPollutants.ozone, WHO.O3),  safe: 100 },
   ];
 
   // Build per-station AQI bar data
@@ -305,20 +306,20 @@ export function AtmosphereView() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-sm font-mono tracking-wider mb-1 prithvi-text-electric">
-                ATMOSPHERIC LAYER COMPOSITION
+                SURFACE POLLUTANTS vs. WHO SAFE LIMITS
               </h3>
               <p className="text-xs opacity-60 prithvi-text-forest">
-                Gas concentration by atmospheric layer
+                Current levels as % of WHO 2021 24h guidelines — 100% = at safe limit
               </p>
             </div>
           </div>
 
           <ResponsiveContainer width="100%" height={320}>
-            <RadarChart data={atmosphericLayers}>
+            <RadarChart data={surfaceComposition}>
               <PolarGrid key="grid" stroke="var(--prithvi-grid)" />
               <PolarAngleAxis
                 key="angleaxis"
-                dataKey="layer"
+                dataKey="pollutant"
                 stroke="var(--prithvi-electric-cyan)"
                 style={{ fontSize: '10px' }}
               />
@@ -326,62 +327,42 @@ export function AtmosphereView() {
                 key="radiusaxis"
                 stroke="var(--prithvi-electric-cyan)"
                 style={{ fontSize: '10px', opacity: 0.6 }}
+                domain={[0, 200]}
+                tickCount={3}
               />
               <Radar
-                key="o3"
-                name="O₃"
-                dataKey="o3"
-                stroke="var(--prithvi-cyan)"
-                fill="var(--prithvi-cyan)"
+                key="safe"
+                name="WHO Safe Limit (100%)"
+                dataKey="safe"
+                stroke="var(--prithvi-aurora-green)"
+                fill="var(--prithvi-aurora-green)"
+                fillOpacity={0.08}
+                strokeWidth={1.5}
+                strokeDasharray="5 3"
+              />
+              <Radar
+                key="current"
+                name="Current Level (%)"
+                dataKey="current"
+                stroke="var(--prithvi-electric-cyan)"
+                fill="var(--prithvi-electric-cyan)"
                 fillOpacity={0.3}
-                strokeWidth={2}
-              />
-              <Radar
-                key="co2"
-                name="CO₂"
-                dataKey="co2"
-                stroke="var(--prithvi-red)"
-                fill="var(--prithvi-red)"
-                fillOpacity={0.2}
-                strokeWidth={2}
-              />
-              <Radar
-                key="n2o"
-                name="N₂O"
-                dataKey="n2o"
-                stroke="var(--prithvi-green)"
-                fill="var(--prithvi-green)"
-                fillOpacity={0.2}
-                strokeWidth={2}
-              />
-              <Radar
-                key="ch4"
-                name="CH₄"
-                dataKey="ch4"
-                stroke="var(--prithvi-amber)"
-                fill="var(--prithvi-amber)"
-                fillOpacity={0.2}
                 strokeWidth={2}
               />
             </RadarChart>
           </ResponsiveContainer>
 
-          <div className="grid grid-cols-2 gap-3 mt-4">
+          <div className="grid grid-cols-3 gap-3 mt-4">
             <div className="flex items-center gap-2 text-xs font-mono">
-              <div className="w-3 h-3 rounded" style={{ background: 'var(--prithvi-cyan)' }} />
-              <span style={{ color: 'var(--prithvi-cyan)' }}>Ozone (O₃)</span>
+              <div className="w-3 h-3 rounded" style={{ background: 'var(--prithvi-electric-cyan)' }} />
+              <span style={{ color: 'var(--prithvi-electric-cyan)' }}>Current Level</span>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono">
-              <div className="w-3 h-3 rounded" style={{ background: 'var(--prithvi-red)' }} />
-              <span style={{ color: 'var(--prithvi-red)' }}>Carbon Dioxide (CO₂)</span>
+              <div className="w-3 h-3 rounded" style={{ background: 'var(--prithvi-aurora-green)' }} />
+              <span style={{ color: 'var(--prithvi-aurora-green)' }}>WHO Safe Limit (100%)</span>
             </div>
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <div className="w-3 h-3 rounded" style={{ background: 'var(--prithvi-green)' }} />
-              <span style={{ color: 'var(--prithvi-green)' }}>Nitrous Oxide (N₂O)</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <div className="w-3 h-3 rounded" style={{ background: 'var(--prithvi-amber)' }} />
-              <span style={{ color: 'var(--prithvi-amber)' }}>Methane (CH₄)</span>
+            <div className="flex items-center gap-2 text-xs font-mono col-span-1">
+              <span className="opacity-60 prithvi-text-electric">Source: Open-Meteo (O₃/SO₂/CO) + backend (PM2.5/PM10/NO₂)</span>
             </div>
           </div>
         </div>

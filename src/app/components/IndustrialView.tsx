@@ -23,8 +23,10 @@ import {
   MapPin,
   Wind,
   RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { industriesApi, type EnrichedIndustry } from "../../api/client";
+
 
 function complianceColor(score: number): string {
   if (score >= 80) return "var(--prithvi-aurora-green)";
@@ -41,15 +43,18 @@ function complianceLabel(score: number): string {
 export function IndustrialView() {
   const [industries, setIndustries] = useState<EnrichedIndustry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   async function fetchData() {
+    setError(null);
     try {
       const data = await industriesApi.enriched();
       setIndustries(data);
       setLastUpdated(new Date());
-    } catch (err) {
+    } catch (err: any) {
       console.error("IndustrialView: fetch error", err);
+      setError(err?.message ?? "Failed to load industry data");
     } finally {
       setLoading(false);
     }
@@ -136,6 +141,23 @@ export function IndustrialView() {
         <span className="opacity-40 ml-auto">Compliance = CPCB NAAQS 2009 + WHO 2021</span>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div
+          className="flex items-start gap-3 px-4 py-3 rounded-lg border text-xs font-mono"
+          style={{ background: "rgba(239,68,68,0.1)", borderColor: "var(--prithvi-critical-red)", color: "var(--prithvi-critical-red)" }}
+        >
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div>
+            <div className="font-bold mb-1">BACKEND UNAVAILABLE</div>
+            <div className="opacity-80">{error}</div>
+            <div className="opacity-60 mt-1">
+              Make sure the backend is running: <span className="opacity-100">uvicorn main:app --reload</span> (inside the <span className="opacity-100">backend/</span> folder)
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-4 gap-4">
         {[
@@ -180,7 +202,7 @@ export function IndustrialView() {
               <span className="text-xs font-mono opacity-60 prithvi-text-electric">{card.label}</span>
             </div>
             <div className="text-3xl font-mono font-bold" style={{ color: card.color }}>
-              {loading ? "..." : card.value}
+              {loading ? "..." : error ? "–" : card.value}
             </div>
           </motion.div>
         ))}
@@ -387,6 +409,7 @@ export function IndustrialView() {
           Compliance computed against CPCB NAAQS 2009 annual limits and WHO 2021 guidelines. Updated every 30 minutes.
         </div>
       </motion.div>
+
     </div>
   );
 }

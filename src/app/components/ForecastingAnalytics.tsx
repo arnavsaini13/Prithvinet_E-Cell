@@ -208,7 +208,7 @@ export function ForecastingAnalytics() {
           .map((r: PollutionReading) => {
             const d = new Date(r.timestamp);
             return {
-              date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+              date: d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit" }),
               timestamp: d.getTime(),
               pm25: r.pm25,
               pm10: r.pm10,
@@ -497,13 +497,21 @@ export function ForecastingAnalytics() {
             />
             <XAxis
               dataKey="date"
-              stroke="var(--prithvi-text-dim)"
-              tick={{ fill: "var(--prithvi-text-dim)", fontSize: 10, fontFamily: "monospace" }}
-              interval={4}
+              stroke="rgba(255, 255, 255, 0.72)"
+              tick={{ fill: "rgba(255, 255, 255, 0.72)", fontSize: 10, fontFamily: "monospace" }}
+              tickLine={{ stroke: "rgba(255, 255, 255, 0.4)" }}
+              axisLine={{ stroke: "rgba(255, 255, 255, 0.3)" }}
+              interval={24}
+              angle={-35}
+              textAnchor="end"
+              height={50}
             />
             <YAxis
-              stroke="var(--prithvi-text-dim)"
-              tick={{ fill: "var(--prithvi-text-dim)", fontSize: 10, fontFamily: "monospace" }}
+              stroke="rgba(255, 255, 255, 0.72)"
+              tick={{ fill: "rgba(255, 255, 255, 0.72)", fontSize: 11, fontFamily: "monospace" }}
+              tickLine={{ stroke: "rgba(255, 255, 255, 0.4)" }}
+              axisLine={{ stroke: "rgba(255, 255, 255, 0.3)" }}
+              width={45}
               label={{
                 value: selectedMetric.toUpperCase(),
                 angle: -90,
@@ -589,13 +597,21 @@ export function ForecastingAnalytics() {
               />
               <XAxis
                 dataKey="hour"
-                stroke="var(--prithvi-text-dim)"
-                tick={{ fill: "var(--prithvi-text-dim)", fontSize: 9, fontFamily: "monospace" }}
-                interval={3}
+                stroke="rgba(255, 255, 255, 0.72)"
+                tick={{ fill: "rgba(255, 255, 255, 0.72)", fontSize: 10, fontFamily: "monospace" }}
+                tickLine={{ stroke: "rgba(255, 255, 255, 0.4)" }}
+                axisLine={{ stroke: "rgba(255, 255, 255, 0.3)" }}
+                interval={2}
+                angle={-35}
+                textAnchor="end"
+                height={45}
               />
               <YAxis
-                stroke="var(--prithvi-text-dim)"
-                tick={{ fill: "var(--prithvi-text-dim)", fontSize: 9, fontFamily: "monospace" }}
+                stroke="rgba(255, 255, 255, 0.72)"
+                tick={{ fill: "rgba(255, 255, 255, 0.72)", fontSize: 10, fontFamily: "monospace" }}
+                tickLine={{ stroke: "rgba(255, 255, 255, 0.4)" }}
+                axisLine={{ stroke: "rgba(255, 255, 255, 0.3)" }}
+                width={40}
               />
               <Tooltip content={<CustomTooltip />} />
               <Bar
@@ -941,13 +957,21 @@ export function ForecastingAnalytics() {
               />
               <XAxis
                 dataKey="date"
-                stroke="var(--prithvi-text-dim)"
-                tick={{ fill: "var(--prithvi-text-dim)", fontSize: 9, fontFamily: "monospace" }}
+                stroke="rgba(255, 255, 255, 0.72)"
+                tick={{ fill: "rgba(255, 255, 255, 0.72)", fontSize: 10, fontFamily: "monospace" }}
+                tickLine={{ stroke: "rgba(255, 255, 255, 0.4)" }}
+                axisLine={{ stroke: "rgba(255, 255, 255, 0.3)" }}
                 interval={2}
+                angle={-35}
+                textAnchor="end"
+                height={45}
               />
               <YAxis
-                stroke="var(--prithvi-text-dim)"
-                tick={{ fill: "var(--prithvi-text-dim)", fontSize: 9, fontFamily: "monospace" }}
+                stroke="rgba(255, 255, 255, 0.72)"
+                tick={{ fill: "rgba(255, 255, 255, 0.72)", fontSize: 10, fontFamily: "monospace" }}
+                tickLine={{ stroke: "rgba(255, 255, 255, 0.4)" }}
+                axisLine={{ stroke: "rgba(255, 255, 255, 0.3)" }}
+                width={45}
                 label={{
                   value: "μg/m³",
                   angle: -90,
@@ -1035,12 +1059,12 @@ export function ForecastingAnalytics() {
               <PolarGrid stroke="var(--prithvi-grid)" opacity={0.3} />
               <PolarAngleAxis
                 dataKey="metric"
-                tick={{ fill: "var(--prithvi-text-dim)", fontSize: 9, fontFamily: "monospace" }}
+                tick={{ fill: "rgba(255, 255, 255, 0.72)", fontSize: 10, fontFamily: "monospace" }}
               />
               <PolarRadiusAxis
                 angle={90}
                 domain={[0, 100]}
-                tick={{ fill: "var(--prithvi-text-dim)", fontSize: 8 }}
+                tick={{ fill: "rgba(255, 255, 255, 0.72)", fontSize: 9 }}
               />
               <Tooltip content={<CustomTooltip />} />
               <Radar

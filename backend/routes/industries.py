@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db
 from models import Industry
 from schemas import IndustryOut, EnrichedIndustryOut
-from dependencies import require_industry
+from dependencies import require_industry, require_citizen
 from services.compliance_engine import INDUSTRY_COORDS, fetch_compliance_for_industry
 
 router = APIRouter(tags=["Industries"])
@@ -23,11 +23,11 @@ router = APIRouter(tags=["Industries"])
 async def list_industries(
     min_compliance: float | None = Query(default=None, ge=0, le=100),
     db: AsyncSession = Depends(get_db),
-    _user=Depends(require_industry),
+    _user=Depends(require_citizen),
 ):
     """
     List all registered industries with their latest compliance score.
-    Requires industry_user, regional_officer, or admin role.
+    Accessible to all authenticated users.
     """
     stmt = select(Industry).order_by(Industry.compliance_score.asc())
 
@@ -41,7 +41,7 @@ async def list_industries(
 @router.get("/industries/enriched", response_model=list[EnrichedIndustryOut])
 async def list_industries_enriched(
     db: AsyncSession = Depends(get_db),
-    _user=Depends(require_industry),
+    _user=Depends(require_citizen),
 ):
     """
     List all industries enriched with LIVE air quality metrics fetched in real-time

@@ -47,11 +47,11 @@ async def register(
     if user_count == 0:
         assigned_role = "admin"
     else:
-        # Restrict privileged role creation to public registration
-        if payload.role.value in ("admin", "regional_officer"):
+        # Only admins can create other admins
+        if payload.role.value == "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admins can assign admin or regional_officer roles. Register as citizen or industry_user.",
+                detail="Only admins can assign the admin role.",
             )
         assigned_role = payload.role.value
 

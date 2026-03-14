@@ -7,7 +7,6 @@ import { useAuth } from "../context/AuthContext";
 
 const roles = [
   { id: 'admin', name: 'Admin', description: 'Full system access' },
-  { id: 'regional', name: 'Regional Officer', description: 'Regional monitoring' },
   { id: 'industry', name: 'Industry User', description: 'Sector-specific data' },
   { id: 'citizen', name: 'Citizen', description: 'Public environmental data' },
 ];

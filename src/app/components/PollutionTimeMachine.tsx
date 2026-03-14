@@ -63,6 +63,8 @@ export function PollutionTimeMachine() {
   const [playSpeed, setPlaySpeed] = useState(1);
   const [stationData, setStationData] = useState<MapStation[]>([]);
   const [timeFilter, setTimeFilter] = useState<"all" | "past" | "current" | "future">("all");
+  // Map of stationId -> dayStr -> avgAQI for real per-station data
+  const [stationDayAqi, setStationDayAqi] = useState<Map<number, Map<string, number>>>(new Map());
   const timelineRef = useRef<HTMLDivElement>(null);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -73,10 +75,31 @@ export function PollutionTimeMachine() {
       try {
         const [stList, rdList] = await Promise.all([
           stationsApi.list(),
-          pollutionApi.list(undefined, 200),
+          pollutionApi.list(undefined, 500),
         ]);
         if (cancelled) return;
         setStations(stList);
+
+        // Build per-station day AQI map for realistic map rendering
+        const byStationDay = new Map<number, Map<string, PollutionReading[]>>();
+        for (const r of rdList) {
+          if (!byStationDay.has(r.station_id)) byStationDay.set(r.station_id, new Map());
+          const dayMap = byStationDay.get(r.station_id)!;
+          const day = new Date(r.timestamp).toISOString().slice(0, 10);
+          if (!dayMap.has(day)) dayMap.set(day, []);
+          dayMap.get(day)!.push(r);
+        }
+        const stationDayAqiMap = new Map<number, Map<string, number>>();
+        for (const [stId, dayMap] of byStationDay.entries()) {
+          const aqiMap = new Map<string, number>();
+          for (const [day, readings] of dayMap.entries()) {
+            const avgPm25 = readings.reduce((s, r) => s + r.pm25, 0) / readings.length;
+            const avgPm10 = readings.reduce((s, r) => s + r.pm10, 0) / readings.length;
+            aqiMap.set(day, Math.round((avgPm25 + avgPm10) / 2));
+          }
+          stationDayAqiMap.set(stId, aqiMap);
+        }
+        setStationDayAqi(stationDayAqiMap);
 
         // Build timeline from real readings (grouped by day)
         const byDay = new Map<string, PollutionReading[]>();
@@ -114,38 +137,55 @@ export function PollutionTimeMachine() {
         let forecastPoints: TimelinePoint[] = [];
         if (stList.length > 0) {
           try {
-            const fc = await forecastApi.get(stList[0].id, "pm25", 30);
-            forecastPoints = fc.forecast.map((fp) => {
-              const date = new Date(fp.timestamp);
-              const daysFromNow = Math.round((date.getTime() - now.getTime()) / 86400000);
-              return {
-                date,
-                dateStr: date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-                shortDate: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-                daysFromNow,
-                aqi: Math.round(fp.predicted_value),
-                pm25: Math.round(fp.predicted_value * 10) / 10,
-                pm10: Math.round(fp.predicted_value * 1.4 * 10) / 10,
-                no2: Math.round(fp.predicted_value * 0.5 * 10) / 10,
-                type: "future" as const,
-              };
-            });
+            // Request 240 hourly steps ≈ 10 future days
+            const fc = await forecastApi.get(stList[0].id, "pm25", 240);
+            // Group hourly forecast into daily aggregates
+            const fcByDay = new Map<string, number[]>();
+            for (const fp of fc.forecast) {
+              const day = new Date(fp.timestamp).toISOString().slice(0, 10);
+              if (!fcByDay.has(day)) fcByDay.set(day, []);
+              fcByDay.get(day)!.push(fp.predicted_value);
+            }
+            forecastPoints = Array.from(fcByDay.entries())
+              .filter(([day]) => day > todayStr)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([day, values]) => {
+                const avgPm25 = values.reduce((s, v) => s + v, 0) / values.length;
+                const avgPm10 = avgPm25 * 1.4;
+                const date = new Date(day + "T12:00:00");
+                const daysFromNow = Math.round((date.getTime() - now.getTime()) / 86400000);
+                return {
+                  date,
+                  dateStr: date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                  shortDate: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+                  daysFromNow,
+                  aqi: Math.round((avgPm25 + avgPm10) / 2),
+                  pm25: Math.round(avgPm25 * 10) / 10,
+                  pm10: Math.round(avgPm10 * 10) / 10,
+                  no2: Math.round(avgPm25 * 0.5 * 10) / 10,
+                  type: "future" as const,
+                };
+              });
           } catch {
-            // Forecast may not be available; generate simple extrapolation
+            // Forecast not available — generate 14-day linear extrapolation
             const lastPast = pastPoints[pastPoints.length - 1];
             if (lastPast) {
-              for (let i = 1; i <= 30; i++) {
+              for (let i = 1; i <= 14; i++) {
                 const date = new Date(now);
                 date.setDate(date.getDate() + i);
+                // Smooth trend without random variance (deterministic per index)
+                const trend = lastPast.pm25 + i * 0.3 + Math.sin(i * 0.7) * 4;
+                const p25 = Math.round(Math.max(5, trend) * 10) / 10;
+                const p10 = Math.round(p25 * 1.4 * 10) / 10;
                 forecastPoints.push({
                   date,
                   dateStr: date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
                   shortDate: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
                   daysFromNow: i,
-                  aqi: Math.round(lastPast.aqi + i * 0.5 + Math.sin(i / 5) * 10),
-                  pm25: Math.round((lastPast.pm25 + i * 0.3) * 10) / 10,
-                  pm10: Math.round((lastPast.pm10 + i * 0.4) * 10) / 10,
-                  no2: Math.round((lastPast.no2 + i * 0.2) * 10) / 10,
+                  aqi: Math.round((p25 + p10) / 2),
+                  pm25: p25,
+                  pm10: p10,
+                  no2: Math.round(p25 * 0.5 * 10) / 10,
                   type: "future" as const,
                 });
               }
@@ -173,9 +213,13 @@ export function PollutionTimeMachine() {
     if (timelineData.length === 0 || stations.length === 0) return;
     const point = timelineData[selectedIndex];
     if (!point) return;
+    const dayStr = point.date.toISOString().slice(0, 10);
     const mapped: MapStation[] = stations.map((st) => {
-      const variance = (Math.sin(st.id * 1000 + selectedIndex) * 0.5) * 20;
-      const aqi = Math.max(20, point.aqi + variance);
+      // Use real per-station day AQI when available; fall back to global AQI
+      // with a small deterministic station-specific offset (not time-varying noise)
+      const realAqi = stationDayAqi.get(st.id)?.get(dayStr);
+      const stationOffset = ((st.id * 7) % 30) - 15; // deterministic, station-specific
+      const aqi = Math.max(20, realAqi ?? (point.aqi + stationOffset));
       return {
         id: String(st.id),
         name: st.name,
@@ -186,7 +230,7 @@ export function PollutionTimeMachine() {
       };
     });
     setStationData(mapped);
-  }, [selectedIndex, timelineData, stations]);
+  }, [selectedIndex, timelineData, stations, stationDayAqi]);
 
   const selectedData = timelineData[selectedIndex] ?? {
     date: new Date(),
@@ -213,7 +257,7 @@ export function PollutionTimeMachine() {
           }
           return next;
         });
-      }, 100); // Update every 100ms
+      }, 600); // 600ms per step
     } else {
       if (playIntervalRef.current) {
         clearInterval(playIntervalRef.current);
@@ -459,8 +503,8 @@ export function PollutionTimeMachine() {
               >
                 <option value={1} style={{ background: "var(--prithvi-panel-bg-solid)", color: "var(--prithvi-electric-cyan)" }}>1x</option>
                 <option value={2} style={{ background: "var(--prithvi-panel-bg-solid)", color: "var(--prithvi-electric-cyan)" }}>2x</option>
+                <option value={3} style={{ background: "var(--prithvi-panel-bg-solid)", color: "var(--prithvi-electric-cyan)" }}>3x</option>
                 <option value={5} style={{ background: "var(--prithvi-panel-bg-solid)", color: "var(--prithvi-electric-cyan)" }}>5x</option>
-                <option value={10} style={{ background: "var(--prithvi-panel-bg-solid)", color: "var(--prithvi-electric-cyan)" }}>10x</option>
               </select>
             </div>
 
@@ -532,11 +576,45 @@ export function PollutionTimeMachine() {
             </div>
           </div>
 
-          {/* Timeline labels */}
-          <div className="flex justify-between text-xs font-mono opacity-60 mt-2">
-            <span className="prithvi-text-ocean">{timelineData[0]?.shortDate ?? "—"}</span>
-            <span className="prithvi-text-aurora">{currentIndex >= 0 ? timelineData[currentIndex]?.shortDate : "—"}</span>
-            <span className="prithvi-text-electric">{timelineData[timelineData.length - 1]?.shortDate ?? "—"}</span>
+          {/* Timeline labels — show ~7 evenly spaced dates across the full range */}
+          <div className="relative mt-2" style={{ height: "28px" }}>
+            {timelineData.length > 1 && (() => {
+              const total = timelineData.length;
+              // Pick up to 7 evenly-spaced indices to label
+              const tickCount = Math.min(7, total);
+              const ticks: number[] = [];
+              for (let t = 0; t < tickCount; t++) {
+                ticks.push(Math.round((t / (tickCount - 1)) * (total - 1)));
+              }
+              return ticks.map((idx) => {
+                const pct = (idx / (total - 1)) * 100;
+                const pt = timelineData[idx];
+                const isToday = idx === currentIndex;
+                const isFuture = pt?.type === "future";
+                return (
+                  <div
+                    key={idx}
+                    className="absolute flex flex-col items-center"
+                    style={{ left: `${pct}%`, transform: "translateX(-50%)" }}
+                  >
+                    <div
+                      className="w-px h-2 mb-1"
+                      style={{ background: isToday ? "var(--prithvi-aurora-green)" : isFuture ? "var(--prithvi-electric-cyan)" : "var(--prithvi-ocean-blue)", opacity: 0.7 }}
+                    />
+                    <span
+                      className="text-xs font-mono whitespace-nowrap"
+                      style={{
+                        fontSize: "8px",
+                        color: isToday ? "var(--prithvi-aurora-green)" : isFuture ? "var(--prithvi-electric-cyan)" : "var(--prithvi-ocean-blue)",
+                        opacity: 0.85,
+                      }}
+                    >
+                      {isToday ? "TODAY" : pt?.shortDate ?? "—"}
+                    </span>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
       </motion.div>
@@ -813,7 +891,7 @@ export function PollutionTimeMachine() {
             </h3>
           </div>
 
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={270}>
             <AreaChart data={contextData}>
               <defs>
                 <linearGradient id="aqiGradient" x1="0" y1="0" x2="0" y2="1">
@@ -828,16 +906,24 @@ export function PollutionTimeMachine() {
                   </feMerge>
                 </filter>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--prithvi-grid)" opacity={0.2} vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--prithvi-grid)" opacity={0.3} vertical={false} />
               <XAxis
                 dataKey="shortDate"
-                stroke="var(--prithvi-text-dim)"
-                tick={{ fill: "var(--prithvi-text-dim)", fontSize: 9, fontFamily: "monospace" }}
-                interval={5}
+                stroke="var(--prithvi-electric-cyan)"
+                tick={{ fill: "var(--prithvi-electric-cyan)", fontSize: 8, fontFamily: "monospace" }}
+                tickLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.5 }}
+                axisLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.6 }}
+                interval={2}
+                angle={-30}
+                textAnchor="end"
+                height={40}
               />
               <YAxis
-                stroke="var(--prithvi-text-dim)"
-                tick={{ fill: "var(--prithvi-text-dim)", fontSize: 9, fontFamily: "monospace" }}
+                stroke="var(--prithvi-aurora-green)"
+                tick={{ fill: "var(--prithvi-aurora-green)", fontSize: 9, fontFamily: "monospace" }}
+                tickLine={{ stroke: "var(--prithvi-aurora-green)", opacity: 0.5 }}
+                axisLine={{ stroke: "var(--prithvi-aurora-green)", opacity: 0.6 }}
+                label={{ value: "AQI", angle: -90, position: "insideLeft", fill: "var(--prithvi-aurora-green)", fontSize: 9, fontFamily: "monospace", dx: -4 }}
               />
               <Tooltip content={<CustomTooltip />} />
               <Area
@@ -876,8 +962,8 @@ export function PollutionTimeMachine() {
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={[selectedData]}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--prithvi-grid)" opacity={0.2} vertical={false} />
-              <XAxis dataKey="dateStr" stroke="var(--prithvi-text-dim)" tick={{ fill: "var(--prithvi-text-dim)", fontSize: 9 }} />
-              <YAxis stroke="var(--prithvi-text-dim)" tick={{ fill: "var(--prithvi-text-dim)", fontSize: 9 }} />
+              <XAxis dataKey="dateStr" stroke="var(--prithvi-electric-cyan)" tick={{ fill: "var(--prithvi-electric-cyan)", fontSize: 9 }} axisLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.6 }} />
+              <YAxis stroke="var(--prithvi-aurora-green)" tick={{ fill: "var(--prithvi-aurora-green)", fontSize: 9 }} axisLine={{ stroke: "var(--prithvi-aurora-green)", opacity: 0.6 }} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="pm25" fill="var(--prithvi-electric-cyan)" radius={[4, 4, 0, 0]} name="PM2.5" />
               <Bar dataKey="pm10" fill="var(--prithvi-critical-red)" radius={[4, 4, 0, 0]} name="PM10" opacity={0.8} />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { motion } from "motion/react";
 import { Waves, Thermometer, Droplets, Fish, AlertTriangle, TrendingDown } from "lucide-react";
 import { MetricCard } from "./MetricCard";
@@ -8,6 +9,7 @@ import type { PollutionReading, Station, Alert } from "../../api/client";
 import { StationSelector } from "./StationSelector";
 
 export function OceanView() {
+  const navigate = useNavigate();
   const [stations, setStations] = useState<Station[]>([]);
   const [readings, setReadings] = useState<PollutionReading[]>([]);
   const [latestAlert, setLatestAlert] = useState<Alert | null>(null);
@@ -165,7 +167,9 @@ export function OceanView() {
               Value: {latestAlert.value.toFixed(2)} • Station #{latestAlert.station_id} • {new Date(latestAlert.timestamp).toLocaleString()}
             </div>
           </div>
-          <button className="px-4 py-2 rounded text-xs font-mono border hover:bg-opacity-20 transition-all prithvi-badge-critical">
+          <button
+            onClick={() => navigate('/dashboard/pollution-map')}
+            className="px-4 py-2 rounded text-xs font-mono border hover:bg-opacity-20 transition-all prithvi-badge-critical">
             EMERGENCY PROTOCOL
           </button>
         </div>

@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import {
   Database,
   Download,
@@ -36,6 +37,7 @@ interface ActivityEntry {
 }
 
 export function DataArchive() {
+  const navigate = useNavigate();
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -44,6 +46,7 @@ export function DataArchive() {
   const [stationCount, setStationCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
   const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
+  const [rawReadings, setRawReadings] = useState<PollutionReading[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +63,7 @@ export function DataArchive() {
         setStationCount(stations.length);
         setTotalRecords(readings.length);
         setAlertCount(alerts.length);
+        setRawReadings(readings);
 
         // Group readings by station to build per-station archive entries
         const byStation = new Map<number, PollutionReading[]>();
@@ -246,6 +250,26 @@ export function DataArchive() {
 
         <div className="flex gap-3">
           <button
+            onClick={() => {
+              const template = {
+                station_id: 1,
+                pm25: 0.0,
+                pm10: 0.0,
+                co2: 400.0,
+                no2: 0.0,
+                ph: 7.0,
+                turbidity: 1.0,
+                dissolved_oxygen: 8.0,
+                noise_level: 40.0,
+              };
+              const blob = new Blob([JSON.stringify(template, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "sensor_data_template.json";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
             className="px-4 py-2 rounded-lg border text-xs font-mono tracking-wider transition-all hover:bg-white/5 flex items-center gap-2"
             style={{
               background: "var(--prithvi-glass)",
@@ -256,6 +280,18 @@ export function DataArchive() {
             UPLOAD DATA
           </button>
           <button
+            onClick={() => {
+              const headers = ["Dataset", "Type", "Size", "Records", "Date", "Format", "Status"];
+              const rows = filteredData.map((d) => [d.name, d.type, d.size, d.records, d.date, d.format, d.status]);
+              const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "prithvinet_archive.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
             className="px-4 py-2 rounded-lg border text-xs font-mono tracking-wider transition-all hover:bg-white/5 flex items-center gap-2"
             style={{
               background: "var(--prithvi-glass-bright)",
@@ -589,12 +625,30 @@ export function DataArchive() {
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         <button
+                          onClick={() => {
+                            if (item.type === "Water Quality") navigate("/dashboard/ocean");
+                            else if (item.type === "Alerts") navigate("/dashboard/pollution-map");
+                            else navigate("/dashboard/atmosphere");
+                          }}
                           className="p-2 rounded hover:bg-white/10 transition-all"
                           title="View"
                         >
                           <Eye className="w-4 h-4 prithvi-text-electric" />
                         </button>
                         <button
+                          onClick={() => {
+                            const stId = item.id.startsWith("st-") ? parseInt(item.id.replace("st-", "")) : null;
+                            const data = stId !== null
+                              ? rawReadings.filter((r) => r.station_id === stId)
+                              : rawReadings;
+                            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `${item.name.replace(/[^a-z0-9]/gi, "_")}.json`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
                           className="p-2 rounded hover:bg-white/10 transition-all"
                           title="Download"
                         >

@@ -102,6 +102,10 @@ export function GlobalMonitor() {
 
   const selectedStationName = selectedStation != null ? stations.find(s => s.id === selectedStation)?.name ?? 'Station' : 'All Stations';
 
+  // Compute data integrity as % of stations that have at least one reading loaded
+  const stationsWithData = new Set(filteredReadings.map(r => r.station_id)).size;
+  const dataIntegrity = stations.length > 0 ? Math.round((stationsWithData / stations.length) * 100) : 0;
+
   return (
     <div className="p-6 space-y-6 prithvi-section-atmosphere">
       {/* Alert banner */}
@@ -323,11 +327,16 @@ export function GlobalMonitor() {
               <XAxis
                 dataKey="time"
                 stroke="var(--prithvi-electric-cyan)"
-                style={{ fontSize: '10px', opacity: 0.6 }}
+                tick={{ fill: "var(--prithvi-electric-cyan)", fontSize: 10, fontFamily: "monospace" }}
+                tickLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.5 }}
+                axisLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.6 }}
+                interval="preserveStartEnd"
               />
               <YAxis
                 stroke="var(--prithvi-electric-cyan)"
-                style={{ fontSize: '10px', opacity: 0.6 }}
+                tick={{ fill: "var(--prithvi-electric-cyan)", fontSize: 10, fontFamily: "monospace" }}
+                tickLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.5 }}
+                axisLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.6 }}
               />
               <Tooltip
                 contentStyle={{
@@ -405,11 +414,16 @@ export function GlobalMonitor() {
               <XAxis
                 dataKey="month"
                 stroke="var(--prithvi-electric-cyan)"
-                style={{ fontSize: '10px', opacity: 0.6 }}
+                tick={{ fill: "var(--prithvi-electric-cyan)", fontSize: 10, fontFamily: "monospace" }}
+                tickLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.5 }}
+                axisLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.6 }}
+                interval="preserveStartEnd"
               />
               <YAxis
                 stroke="var(--prithvi-electric-cyan)"
-                style={{ fontSize: '10px', opacity: 0.6 }}
+                tick={{ fill: "var(--prithvi-electric-cyan)", fontSize: 10, fontFamily: "monospace" }}
+                tickLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.5 }}
+                axisLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.6 }}
                 domain={co2Data.length > 0 ? ['auto', 'auto'] : [410, 425]}
               />
               <Tooltip
@@ -462,7 +476,7 @@ export function GlobalMonitor() {
         {[
           { name: 'Temperature', value: weather ? weather.temperature_2m.toFixed(1) : '—', unit: '°C', change: weather ? +(weather.temperature_2m - 25).toFixed(1) : 0, status: weather && weather.temperature_2m > 40 ? 'critical' : weather && weather.temperature_2m > 35 ? 'warning' : 'optimal', icon: Thermometer },
           { name: 'Humidity', value: weather ? weather.relative_humidity_2m.toFixed(0) : '—', unit: '%', change: weather ? +(weather.relative_humidity_2m - 60).toFixed(0) : 0, status: weather && weather.relative_humidity_2m > 85 ? 'warning' : 'optimal', icon: Droplets },
-          { name: 'UV Index', value: weather ? weather.uv_index.toFixed(1) : '—', change: weather ? +(weather.uv_index - 5).toFixed(1) : 0, status: weather && weather.uv_index > 8 ? 'critical' : weather && weather.uv_index > 5 ? 'warning' : 'optimal', icon: Leaf },
+          { name: 'UV Index', value: weather ? weather.uv_index_max.toFixed(1) : '—', change: weather ? +(weather.uv_index_max - 5).toFixed(1) : 0, status: weather && weather.uv_index_max > 8 ? 'critical' : weather && weather.uv_index_max > 5 ? 'warning' : 'optimal', icon: Leaf },
           { name: 'Wind Speed', value: weather ? weather.wind_speed_10m.toFixed(1) : '—', unit: 'km/h', change: weather ? +(weather.wind_speed_10m - 15).toFixed(1) : 0, status: weather && weather.wind_speed_10m > 50 ? 'critical' : weather && weather.wind_speed_10m > 30 ? 'warning' : 'optimal', icon: Wind },
           { name: 'Pressure', value: weather ? weather.surface_pressure.toFixed(0) : '—', unit: 'hPa', change: weather ? +(weather.surface_pressure - 1013).toFixed(0) : 0, status: 'optimal', icon: Cloud },
         ].map((metric) => (
@@ -494,7 +508,7 @@ export function GlobalMonitor() {
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full prithvi-pulse" style={{ background: 'var(--prithvi-aurora-green)' }} />
               <span className="prithvi-text-electric">
-                SATELLITE UPLINK: <span className="prithvi-text-aurora">ACTIVE</span>
+                SATELLITE UPLINK: <span className={weather !== null ? "prithvi-text-aurora" : "prithvi-text-electric"}>{weather !== null ? "ACTIVE" : "CONNECTING..."}</span>
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -506,7 +520,7 @@ export function GlobalMonitor() {
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full prithvi-pulse" style={{ background: 'var(--prithvi-electric-cyan)' }} />
               <span className="prithvi-text-electric">
-                DATA INTEGRITY: <span className="prithvi-text-ocean">{readings.length > 0 ? '99.8' : '—'}%</span>
+                DATA INTEGRITY: <span className="prithvi-text-ocean">{stations.length > 0 ? `${dataIntegrity}` : '—'}%</span>
               </span>
             </div>
           </div>

@@ -26,6 +26,7 @@ export function Root() {
   const [refreshInterval, setRefreshInterval] = useState(30);
   const [darkMode, setDarkMode] = useState(true);
   const [showAnimations, setShowAnimations] = useState(true);
+  const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -106,7 +107,8 @@ export function Root() {
           noise: Math.round(avg.noise / n),
           risk: +(avg.risk / n).toFixed(1),
         });
-      }).catch(() => {});
+        setApiHealthy(true);
+      }).catch(() => { setApiHealthy(false); });
     };
     fetchRisk();
     const interval = setInterval(fetchRisk, 10000);
@@ -114,7 +116,10 @@ export function Root() {
   }, []);
 
   return (
-    <div className="min-h-screen relative overflow-x-hidden prithvi-atmosphere-bg">
+    <div
+      className="min-h-screen relative overflow-x-hidden prithvi-atmosphere-bg"
+      style={!darkMode ? { filter: "brightness(1.6) contrast(0.85) saturate(0.75)" } : undefined}
+    >
       {/* Multi-layered atmospheric background overlay */}
       <div className="absolute inset-0 prithvi-gradient-earth pointer-events-none" />
       <div className="absolute inset-0 prithvi-grid-overlay opacity-20 pointer-events-none" />
@@ -208,9 +213,9 @@ export function Root() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 prithvi-pulse" style={{ color: 'var(--prithvi-aurora-green)' }} />
-                <span className="text-sm font-mono prithvi-text-aurora">
-                  ALL SYSTEMS OPERATIONAL
+                <Activity className="w-4 h-4 prithvi-pulse" style={{ color: apiHealthy === false ? 'var(--prithvi-warm-amber)' : 'var(--prithvi-aurora-green)' }} />
+                <span className="text-sm font-mono" style={{ color: apiHealthy === false ? 'var(--prithvi-warm-amber)' : 'var(--prithvi-aurora-green)', textShadow: apiHealthy === false ? '0 0 8px var(--prithvi-amber-glow)' : undefined }}>
+                  {apiHealthy === null ? 'CONNECTING...' : apiHealthy ? 'ALL SYSTEMS OPERATIONAL' : 'API DEGRADED'}
                 </span>
               </div>
 

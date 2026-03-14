@@ -295,6 +295,7 @@ export interface WeatherCurrent {
   relative_humidity_2m: number;
   shortwave_radiation: number;
   uv_index: number;
+  uv_index_max: number;
 }
 
 export interface WeatherHourly {
@@ -314,11 +315,12 @@ export interface MarineCurrent {
 export const openMeteoApi = {
   /** Fetch current weather (pressure, wind, solar, temperature, humidity, UV) for given coordinates */
   weather: async (lat = INDIA_LAT, lng = INDIA_LNG): Promise<{ current: WeatherCurrent; hourly: WeatherHourly }> => {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,wind_speed_10m,surface_pressure,relative_humidity_2m,shortwave_radiation,uv_index&hourly=temperature_2m,wind_speed_10m,surface_pressure,shortwave_radiation&past_hours=24&forecast_hours=0&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,wind_speed_10m,surface_pressure,relative_humidity_2m,shortwave_radiation,uv_index&hourly=temperature_2m,wind_speed_10m,surface_pressure,shortwave_radiation&daily=uv_index_max&past_hours=24&forecast_hours=0&forecast_days=1&timezone=auto`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Open-Meteo weather fetch failed");
     const data = await res.json();
-    return { current: data.current, hourly: data.hourly };
+    const uvMax = data.daily?.uv_index_max?.[0] ?? data.current?.uv_index ?? 0;
+    return { current: { ...data.current, uv_index_max: uvMax }, hourly: data.hourly };
   },
 
   /** Fetch marine data for given coastal coordinates */

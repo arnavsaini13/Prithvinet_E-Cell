@@ -99,50 +99,74 @@ export function BiodiversityView() {
   // Pollution severity (0-1), controls ecosystem scores
   const pollSeverity = Math.min(1, avgPm25 / 150);
 
-  // Build ecosystem health radar from real pollution -> ecosystem impact mapping
-  // Indian ecosystems with health derived from real air/water quality
+  // Map GBIF state occurrence counts to ecosystems (case-insensitive partial match)
+  const stateCount = (...names: string[]) =>
+    names.reduce((tot, name) => {
+      const e = stateData.find(s => s.name.toLowerCase().includes(name.toLowerCase()));
+      return tot + (e?.count ?? 0);
+    }, 0);
+
+  const ecoStateCounts = {
+    'Western Ghats':     stateCount('Tamil Nadu', 'Karnataka', 'Kerala', 'Maharashtra', 'Goa'),
+    'Sundarbans':        stateCount('West Bengal', 'Odisha'),
+    'Indo-Gangetic':     stateCount('Uttar Pradesh', 'Bihar', 'Punjab', 'Haryana'),
+    'Eastern Himalayas': stateCount('Arunachal', 'Assam', 'Sikkim', 'Meghalaya'),
+    'Thar Desert':       stateCount('Rajasthan', 'Gujarat'),
+    'Andaman Islands':   stateCount('Andaman'),
+  };
+
+  const maxEcoCount = Math.max(...Object.values(ecoStateCounts), 1);
+  // Log-scale normalization → 35–90 range. Falls back to mid-score if GBIF not yet loaded
+  const ecoBase = (name: keyof typeof ecoStateCounts): number => {
+    const count = ecoStateCounts[name];
+    if (count === 0) return 65; // fallback while data loads
+    return Math.min(90, Math.max(35, Math.round(35 + (Math.log10(count + 1) / Math.log10(maxEcoCount + 1)) * 55)));
+  };
+
+  // Build ecosystem health radar: base scores from real GBIF occurrence counts
+  // Habitat/species/resilience are offset proportional to each ecosystem's type
   const ecosystemHealth = [
     {
       ecosystem: 'Western Ghats',
-      biodiversity: Math.round(90 - pollSeverity * 15),
-      habitat: Math.round(78 - pollSeverity * 10),
-      species: Math.round(85 - pollSeverity * 12),
-      resilience: Math.round(72 - pollSeverity * 8),
+      biodiversity: Math.round(ecoBase('Western Ghats') - pollSeverity * 15),
+      habitat:      Math.round(ecoBase('Western Ghats') * 0.87 - pollSeverity * 10),
+      species:      Math.round(ecoBase('Western Ghats') * 0.94 - pollSeverity * 12),
+      resilience:   Math.round(ecoBase('Western Ghats') * 0.80 - pollSeverity * 8),
     },
     {
       ecosystem: 'Sundarbans',
-      biodiversity: Math.round(82 - pollSeverity * 18),
-      habitat: Math.round(70 - pollSeverity * 15),
-      species: Math.round(76 - pollSeverity * 10),
-      resilience: Math.round(65 - pollSeverity * 12),
+      biodiversity: Math.round(ecoBase('Sundarbans') - pollSeverity * 18),
+      habitat:      Math.round(ecoBase('Sundarbans') * 0.85 - pollSeverity * 15),
+      species:      Math.round(ecoBase('Sundarbans') * 0.92 - pollSeverity * 10),
+      resilience:   Math.round(ecoBase('Sundarbans') * 0.79 - pollSeverity * 12),
     },
     {
       ecosystem: 'Indo-Gangetic',
-      biodiversity: Math.round(55 - pollSeverity * 20),
-      habitat: Math.round(50 - pollSeverity * 18),
-      species: Math.round(58 - pollSeverity * 15),
-      resilience: Math.round(45 - pollSeverity * 10),
+      biodiversity: Math.round(ecoBase('Indo-Gangetic') - pollSeverity * 20),
+      habitat:      Math.round(ecoBase('Indo-Gangetic') * 0.91 - pollSeverity * 18),
+      species:      Math.round(ecoBase('Indo-Gangetic') * 1.05 - pollSeverity * 15),
+      resilience:   Math.round(ecoBase('Indo-Gangetic') * 0.82 - pollSeverity * 10),
     },
     {
       ecosystem: 'Eastern Himalayas',
-      biodiversity: Math.round(88 - pollSeverity * 10),
-      habitat: Math.round(80 - pollSeverity * 8),
-      species: Math.round(82 - pollSeverity * 12),
-      resilience: Math.round(78 - pollSeverity * 6),
+      biodiversity: Math.round(ecoBase('Eastern Himalayas') - pollSeverity * 10),
+      habitat:      Math.round(ecoBase('Eastern Himalayas') * 0.91 - pollSeverity * 8),
+      species:      Math.round(ecoBase('Eastern Himalayas') * 0.93 - pollSeverity * 12),
+      resilience:   Math.round(ecoBase('Eastern Himalayas') * 0.89 - pollSeverity * 6),
     },
     {
       ecosystem: 'Thar Desert',
-      biodiversity: Math.round(40 - pollSeverity * 8),
-      habitat: Math.round(55 - pollSeverity * 10),
-      species: Math.round(38 - pollSeverity * 5),
-      resilience: Math.round(60 - pollSeverity * 6),
+      biodiversity: Math.round(ecoBase('Thar Desert') - pollSeverity * 8),
+      habitat:      Math.round(ecoBase('Thar Desert') * 1.38 - pollSeverity * 10),
+      species:      Math.round(ecoBase('Thar Desert') * 0.95 - pollSeverity * 5),
+      resilience:   Math.round(ecoBase('Thar Desert') * 1.50 - pollSeverity * 6),
     },
     {
       ecosystem: 'Andaman Islands',
-      biodiversity: Math.round(85 - pollSeverity * 5),
-      habitat: Math.round(75 - pollSeverity * 8),
-      species: Math.round(80 - pollSeverity * 6),
-      resilience: Math.round(70 - pollSeverity * 5),
+      biodiversity: Math.round(ecoBase('Andaman Islands') - pollSeverity * 5),
+      habitat:      Math.round(ecoBase('Andaman Islands') * 0.88 - pollSeverity * 8),
+      species:      Math.round(ecoBase('Andaman Islands') * 0.94 - pollSeverity * 6),
+      resilience:   Math.round(ecoBase('Andaman Islands') * 0.82 - pollSeverity * 5),
     },
   ];
 

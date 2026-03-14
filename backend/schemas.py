@@ -61,6 +61,26 @@ class StationOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class StationDetailOut(BaseModel):
+    """Station with its latest pollution reading."""
+    id: int
+    name: str
+    latitude: float
+    longitude: float
+    region: str
+    pm25: float | None = None
+    pm10: float | None = None
+    co2: float | None = None
+    no2: float | None = None
+    ph: float | None = None
+    turbidity: float | None = None
+    dissolved_oxygen: float | None = None
+    noise_level: float | None = None
+    last_reading_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
 # ---------- Pollution Reading ----------
 
 class SensorDataIn(BaseModel):

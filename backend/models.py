@@ -75,6 +75,7 @@ class Industry(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     location: Mapped[str] = mapped_column(String(300), nullable=False)
     compliance_score: Mapped[float] = mapped_column(Float, nullable=False, default=100.0)
+    region: Mapped[str] = mapped_column(String(100), nullable=False, default="")
 
 
 class Alert(Base):

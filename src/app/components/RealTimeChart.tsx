@@ -163,15 +163,16 @@ export function RealTimeChart({
             <XAxis
               dataKey="id"
               stroke="var(--prithvi-electric-cyan)"
-              style={{ fontSize: '10px', opacity: 0.5 }}
               tick={false}
-              axisLine={{ stroke: 'var(--prithvi-electric-cyan)' }}
+              axisLine={{ stroke: 'var(--prithvi-electric-cyan)', opacity: 0.5 }}
             />
             <YAxis
               domain={yAxisDomain}
               stroke="var(--prithvi-electric-cyan)"
-              style={{ fontSize: '10px', opacity: 0.6 }}
-              axisLine={{ stroke: 'var(--prithvi-electric-cyan)' }}
+              tick={{ fill: "var(--prithvi-electric-cyan)", fontSize: 9, fontFamily: "monospace" }}
+              tickLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.5 }}
+              axisLine={{ stroke: 'var(--prithvi-electric-cyan)', opacity: 0.6 }}
+              width={40}
             />
             <Tooltip
               contentStyle={{
@@ -204,15 +205,16 @@ export function RealTimeChart({
             <XAxis
               dataKey="id"
               stroke="var(--prithvi-electric-cyan)"
-              style={{ fontSize: '10px', opacity: 0.5 }}
               tick={false}
-              axisLine={{ stroke: 'var(--prithvi-electric-cyan)' }}
+              axisLine={{ stroke: 'var(--prithvi-electric-cyan)', opacity: 0.5 }}
             />
             <YAxis
               domain={yAxisDomain}
               stroke="var(--prithvi-electric-cyan)"
-              style={{ fontSize: '10px', opacity: 0.6 }}
-              axisLine={{ stroke: 'var(--prithvi-electric-cyan)' }}
+              tick={{ fill: "var(--prithvi-electric-cyan)", fontSize: 9, fontFamily: "monospace" }}
+              tickLine={{ stroke: "var(--prithvi-electric-cyan)", opacity: 0.5 }}
+              axisLine={{ stroke: 'var(--prithvi-electric-cyan)', opacity: 0.6 }}
+              width={40}
             />
             <Tooltip
               contentStyle={{
