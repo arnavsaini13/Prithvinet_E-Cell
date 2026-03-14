@@ -126,7 +126,7 @@ export function IndustryWarningsDashboard() {
   }
 
   return (
-    <div className="flex" style={{ height: "calc(100vh - 220px)" }}>
+    <div className="flex" style={{ height: "calc(100vh - 80px)" }}>
       {/* ── Left sidebar: conversation list ── */}
       <aside
         className="flex flex-col border-r flex-shrink-0"

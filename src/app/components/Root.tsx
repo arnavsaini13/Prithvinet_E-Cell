@@ -477,7 +477,8 @@ export function Root() {
         </div>
       </header>
 
-      {/* Environmental Status Bar - Enhanced with larger indicators */}
+      {/* Environmental Status Bar — hidden for industry users */}
+      {user?.role !== 'industry_user' && (
       <div className="relative z-20 border-b backdrop-blur-sm prithvi-inner-glow"
            style={{
              borderColor: 'var(--prithvi-border-dim)',
@@ -677,19 +678,21 @@ export function Root() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Main layout with left sidebar */}
-      <div className="flex relative z-10" style={{ minHeight: 'calc(100vh - 220px)' }}>
+      <div className="flex relative z-10" style={{ minHeight: user?.role === 'industry_user' ? 'calc(100vh - 80px)' : 'calc(100vh - 220px)' }}>
         {/* Left Navigation Rail */}
         <aside className="w-20 border-r backdrop-blur-sm prithvi-inner-glow sticky top-0 overflow-y-auto"
                style={{
                  borderColor: 'var(--prithvi-border-dim)',
                  background: 'var(--prithvi-panel-bg)',
-                 height: 'calc(100vh - 220px)'
+                 height: user?.role === 'industry_user' ? 'calc(100vh - 80px)' : 'calc(100vh - 220px)'
                }}>
           <nav className="flex flex-col gap-1 p-2">
             {navItems.filter(item => {
               if (item.path === '/dashboard/data-archive') return false;
+              if (user?.role === 'industry_user' && item.path !== '/dashboard/warnings') return false;
               if (item.roles && !item.roles.includes(user?.role ?? '')) return false;
               return true;
             }).map((item) => {
