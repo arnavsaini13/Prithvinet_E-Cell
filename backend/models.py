@@ -114,6 +114,21 @@ class IndustryWarning(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
     industry: Mapped["Industry"] = relationship(back_populates="warnings")
+    replies: Mapped[list["WarningReply"]] = relationship(
+        back_populates="warning", cascade="all, delete-orphan", order_by="WarningReply.created_at"
+    )
+
+
+class WarningReply(Base):
+    """Industry user's reply to a compliance warning — their action plan."""
+    __tablename__ = "warning_replies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    warning_id: Mapped[int] = mapped_column(Integer, ForeignKey("industry_warnings.id"), nullable=False, index=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+    warning: Mapped["IndustryWarning"] = relationship(back_populates="replies")
 
 
 # ──────────────────────────────────────────────

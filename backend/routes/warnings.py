@@ -1,18 +1,20 @@
 """
 PrithviNet - Industry Warnings Routes
 
-POST /officer/warnings             — regional officer issues a warning to an industry
-GET  /industry/warnings            — industry user views their warnings
-PATCH /industry/warnings/{id}/read — industry user marks a warning as read
+POST /officer/warnings                      — regional officer issues a warning
+GET  /industry/warnings                     — industry user views their warnings (with replies)
+PATCH /industry/warnings/{id}/read         — mark warning as read
+POST /industry/warnings/{id}/reply         — industry user replies with their action plan
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from database import get_db
-from models import Industry, IndustryWarning, User
-from schemas import IndustryWarningCreate, IndustryWarningOut
+from models import Industry, IndustryWarning, WarningReply, User
+from schemas import IndustryWarningCreate, IndustryWarningOut, WarningReplyCreate, WarningReplyOut
 from dependencies import require_officer, require_industry_user
 
 router = APIRouter(tags=["Warnings"])
@@ -25,13 +27,11 @@ async def issue_warning(
     current_user: User = Depends(require_officer),
 ):
     """Regional officer issues a formal warning to an industry in their region."""
-    # Verify the industry exists
     result = await db.execute(select(Industry).where(Industry.id == payload.industry_id))
     industry = result.scalar_one_or_none()
     if industry is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Industry not found")
 
-    # Officers can only warn industries in their own region
     if current_user.role == "regional_officer" and current_user.region:
         if industry.region != current_user.region:
             raise HTTPException(
@@ -52,7 +52,11 @@ async def issue_warning(
     db.add(warning)
     await db.commit()
     await db.refresh(warning)
-    return warning
+    # Load replies (empty for new warning)
+    result = await db.execute(
+        select(IndustryWarning).where(IndustryWarning.id == warning.id).options(selectinload(IndustryWarning.replies))
+    )
+    return result.scalar_one()
 
 
 @router.get("/industry/warnings", response_model=list[IndustryWarningOut])
@@ -60,11 +64,10 @@ async def get_my_warnings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_industry_user),
 ):
-    """Industry user retrieves all warnings issued to their registered facility."""
+    """Industry user retrieves all warnings (with replies) for their facility."""
     if not current_user.industry_name:
         return []
 
-    # Find the Industry record linked to this user
     result = await db.execute(
         select(Industry).where(
             Industry.name == current_user.industry_name,
@@ -78,6 +81,7 @@ async def get_my_warnings(
     result = await db.execute(
         select(IndustryWarning)
         .where(IndustryWarning.industry_id == industry.id)
+        .options(selectinload(IndustryWarning.replies))
         .order_by(IndustryWarning.is_read.asc(), IndustryWarning.created_at.desc())
     )
     return result.scalars().all()
@@ -95,7 +99,6 @@ async def mark_warning_read(
     if warning is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Warning not found")
 
-    # Ensure the warning belongs to this user's industry
     ind_result = await db.execute(
         select(Industry).where(
             Industry.id == warning.industry_id,
@@ -107,3 +110,36 @@ async def mark_warning_read(
 
     warning.is_read = True
     await db.commit()
+
+
+@router.post("/industry/warnings/{warning_id}/reply", response_model=WarningReplyOut, status_code=status.HTTP_201_CREATED)
+async def reply_to_warning(
+    warning_id: int,
+    payload: WarningReplyCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_industry_user),
+):
+    """Industry user replies to a warning with their planned corrective action."""
+    result = await db.execute(select(IndustryWarning).where(IndustryWarning.id == warning_id))
+    warning = result.scalar_one_or_none()
+    if warning is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Warning not found")
+
+    ind_result = await db.execute(
+        select(Industry).where(
+            Industry.id == warning.industry_id,
+            Industry.name == current_user.industry_name,
+        )
+    )
+    if ind_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your warning")
+
+    if not payload.message.strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reply message cannot be empty")
+
+    reply = WarningReply(warning_id=warning_id, message=payload.message.strip())
+    db.add(reply)
+    warning.is_read = True  # auto-mark as read when replying
+    await db.commit()
+    await db.refresh(reply)
+    return reply

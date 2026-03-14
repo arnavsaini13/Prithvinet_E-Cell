@@ -277,6 +277,19 @@ class IndustryWarningCreate(BaseModel):
     severity: str  # low / medium / high / critical
 
 
+class WarningReplyCreate(BaseModel):
+    message: str
+
+
+class WarningReplyOut(BaseModel):
+    id: int
+    warning_id: int
+    message: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class IndustryWarningOut(BaseModel):
     id: int
     industry_id: int
@@ -285,5 +298,6 @@ class IndustryWarningOut(BaseModel):
     severity: str
     is_read: bool
     created_at: datetime
+    replies: list[WarningReplyOut] = []
 
     model_config = ConfigDict(from_attributes=True)

@@ -461,6 +461,13 @@ export const regionalApi = {
 
 // ── Industry Warnings ──────────────────────────────
 
+export interface WarningReply {
+  id: number;
+  warning_id: number;
+  message: string;
+  created_at: string;
+}
+
 export interface IndustryWarning {
   id: number;
   industry_id: number;
@@ -469,6 +476,7 @@ export interface IndustryWarning {
   severity: string;  // low / medium / high / critical
   is_read: boolean;
   created_at: string;
+  replies: WarningReply[];
 }
 
 export const warningsApi = {
@@ -479,10 +487,17 @@ export const warningsApi = {
       body: JSON.stringify(data),
     }),
 
-  /** Industry user retrieves their warnings */
+  /** Industry user retrieves their warnings (with replies) */
   myWarnings: () => request<IndustryWarning[]>("/industry/warnings"),
 
   /** Industry user marks a warning as read */
   markRead: (id: number) =>
     request<void>(`/industry/warnings/${id}/read`, { method: "PATCH" }),
+
+  /** Industry user sends an action-plan reply to a warning */
+  reply: (id: number, message: string) =>
+    request<WarningReply>(`/industry/warnings/${id}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
 };

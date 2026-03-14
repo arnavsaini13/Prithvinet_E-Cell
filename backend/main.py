@@ -86,6 +86,15 @@ async def run_migrations():
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS latitude FLOAT"))
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude FLOAT"))
         await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS height_above_sea_level FLOAT"))
+        # Create warning_replies table for industry action-plan responses
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS warning_replies (
+                id SERIAL PRIMARY KEY,
+                warning_id INTEGER NOT NULL REFERENCES industry_warnings(id) ON DELETE CASCADE,
+                message TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """))
         print("  [Migration] columns ensured.")
 
 
