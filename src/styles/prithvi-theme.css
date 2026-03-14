@@ -42,6 +42,9 @@
   --prithvi-grid: rgba(26, 128, 128, 0.12);
   --prithvi-border-dim: rgba(0, 229, 255, 0.2);
   --prithvi-border-bright: rgba(0, 229, 255, 0.5);
+
+  /* Chart / UI text colors */
+  --prithvi-text-dim: rgba(0, 229, 255, 0.55);   /* chart axis labels, muted UI text */
   
   /* Panel backgrounds with layered depth */
   --prithvi-panel-bg: rgba(10, 18, 32, 0.85);
@@ -551,7 +554,18 @@
 
 /* Critical glow for high risk indicators */
 .prithvi-inner-glow-critical {
-  box-shadow: 
+  box-shadow:
     inset 0 0 30px rgba(211, 47, 47, 0.12),
     inset 0 0 60px rgba(211, 47, 47, 0.08);
+}
+
+/* ── Recharts global text visibility fix ──────────────────────────────────
+   SVG text defaults to fill:black which is invisible on dark backgrounds.
+   Override all Recharts tick/label text sitewide. Components that set
+   an explicit tick={{ fill: ... }} prop will override this naturally.    */
+.recharts-text,
+.recharts-cartesian-axis-tick-value,
+.recharts-polar-angle-axis-tick-value,
+.recharts-label {
+  fill: var(--prithvi-text-dim) !important;
 }

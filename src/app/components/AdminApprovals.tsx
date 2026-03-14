@@ -1,11 +1,11 @@
 /**
  * AdminApprovals — Visible only to admins.
- * Lists pending regional officer registrations with Approve / Reject actions.
+ * Lists pending regional officer and industry user registrations with Approve / Reject actions.
  */
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { UserCheck, UserX, MapPin, Clock, CheckCircle, AlertCircle, Users } from "lucide-react";
+import { UserCheck, UserX, MapPin, Clock, CheckCircle, AlertCircle, Users, Factory, Shield } from "lucide-react";
 import { adminApi, type PendingUser } from "../../api/client";
 
 function relTime(iso: string) {
@@ -92,7 +92,7 @@ export function AdminApprovals() {
           Pending Approvals
         </h1>
         <p className="text-sm mt-1 opacity-60 prithvi-text-forest font-mono">
-          Regional officer registrations awaiting your review
+          Regional officer &amp; industry user registrations awaiting your review
         </p>
       </div>
 
@@ -128,7 +128,7 @@ export function AdminApprovals() {
           <CheckCircle className="w-12 h-12 prithvi-text-aurora opacity-40" />
           <p className="font-mono text-base prithvi-text-electric opacity-60">No pending applications</p>
           <p className="text-xs font-mono opacity-40 prithvi-text-forest">
-            All regional officer registrations have been processed.
+            All registrations have been processed.
           </p>
         </div>
       )}
@@ -140,84 +140,116 @@ export function AdminApprovals() {
           {/* Table header */}
           <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b text-xs font-mono tracking-wider prithvi-text-electric opacity-50"
                style={{ borderColor: "var(--prithvi-border-dim)" }}>
-            <span className="col-span-3">NAME</span>
-            <span className="col-span-4">EMAIL</span>
-            <span className="col-span-2">REGION</span>
+            <span className="col-span-3">NAME / ROLE</span>
+            <span className="col-span-3">EMAIL</span>
+            <span className="col-span-3">DETAILS</span>
             <span className="col-span-1">APPLIED</span>
             <span className="col-span-2 text-right">ACTIONS</span>
           </div>
 
           {/* Rows */}
           <AnimatePresence>
-            {users.map((u, i) => (
-              <motion.div
-                key={u.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10, height: 0 }}
-                transition={{ delay: i * 0.04 }}
-                className="grid grid-cols-12 gap-4 px-6 py-4 border-b items-center"
-                style={{
-                  borderColor: "var(--prithvi-border-dim)",
-                  background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
-                }}
-              >
-                {/* Avatar + name */}
-                <div className="col-span-3 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                       style={{ background: "rgba(0,200,255,0.15)", color: "var(--prithvi-electric-cyan)", border: "1px solid var(--prithvi-electric-cyan)" }}>
-                    {u.name[0]?.toUpperCase()}
+            {users.map((u, i) => {
+              const isIndustry = u.role === "industry_user";
+              const roleColor = isIndustry ? "var(--prithvi-warm-amber)" : "var(--prithvi-electric-cyan)";
+              const roleLabel = isIndustry ? "Industry User" : "Regional Officer";
+              return (
+                <motion.div
+                  key={u.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10, height: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="grid grid-cols-12 gap-4 px-6 py-4 border-b items-center"
+                  style={{
+                    borderColor: "var(--prithvi-border-dim)",
+                    background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
+                  }}
+                >
+                  {/* Avatar + name + role badge */}
+                  <div className="col-span-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                         style={{ background: `${roleColor}22`, color: roleColor, border: `1px solid ${roleColor}` }}>
+                      {u.name[0]?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-mono text-sm prithvi-text-electric truncate">{u.name}</div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        {isIndustry
+                          ? <Factory className="w-2.5 h-2.5 flex-shrink-0" style={{ color: roleColor }} />
+                          : <Shield className="w-2.5 h-2.5 flex-shrink-0" style={{ color: roleColor }} />}
+                        <span className="text-[10px] font-mono" style={{ color: roleColor }}>{roleLabel}</span>
+                      </div>
+                    </div>
                   </div>
-                  <span className="font-mono text-sm prithvi-text-electric truncate">{u.name}</span>
-                </div>
 
-                {/* Email */}
-                <div className="col-span-4">
-                  <span className="font-mono text-xs prithvi-text-forest opacity-70 truncate block">{u.email}</span>
-                </div>
+                  {/* Email */}
+                  <div className="col-span-3">
+                    <span className="font-mono text-xs prithvi-text-forest opacity-70 truncate block">{u.email}</span>
+                  </div>
 
-                {/* Region */}
-                <div className="col-span-2 flex items-center gap-1">
-                  <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: "var(--prithvi-electric-cyan)" }} />
-                  <span className="font-mono text-xs" style={{ color: "var(--prithvi-electric-cyan)" }}>
-                    {u.region ?? "—"}
-                  </span>
-                </div>
-
-                {/* Time */}
-                <div className="col-span-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3 prithvi-text-electric opacity-40" />
-                  <span className="font-mono text-xs prithvi-text-electric opacity-50">{relTime(u.created_at)}</span>
-                </div>
-
-                {/* Actions */}
-                <div className="col-span-2 flex items-center justify-end gap-2">
-                  <button
-                    onClick={() => handleApprove(u.id, u.name)}
-                    disabled={actionId === u.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all disabled:opacity-50"
-                    style={{ background: "rgba(0,255,136,0.12)", color: "var(--prithvi-aurora-green)", border: "1px solid var(--prithvi-aurora-green)" }}
-                  >
-                    {actionId === u.id ? (
-                      <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
-                        className="w-3 h-3 border border-current border-t-transparent rounded-full" />
+                  {/* Details: region for officer, industry name+location for industry */}
+                  <div className="col-span-3">
+                    {isIndustry ? (
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1">
+                          <Factory className="w-3 h-3 flex-shrink-0" style={{ color: "var(--prithvi-warm-amber)" }} />
+                          <span className="font-mono text-xs truncate" style={{ color: "var(--prithvi-warm-amber)" }}>
+                            {u.industry_name ?? "—"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 flex-shrink-0 prithvi-text-electric opacity-50" />
+                          <span className="font-mono text-[10px] prithvi-text-electric opacity-60 truncate">
+                            {u.industry_location ?? "—"} · {u.region ?? "—"}
+                          </span>
+                        </div>
+                      </div>
                     ) : (
-                      <UserCheck className="w-3 h-3" />
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: "var(--prithvi-electric-cyan)" }} />
+                        <span className="font-mono text-xs" style={{ color: "var(--prithvi-electric-cyan)" }}>
+                          {u.region ?? "—"}
+                        </span>
+                      </div>
                     )}
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleReject(u.id, u.name)}
-                    disabled={actionId === u.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all disabled:opacity-50"
-                    style={{ background: "rgba(211,47,47,0.12)", color: "var(--prithvi-critical-red)", border: "1px solid var(--prithvi-critical-red)" }}
-                  >
-                    <UserX className="w-3 h-3" />
-                    Reject
-                  </button>
-                </div>
-              </motion.div>
-            ))}
+                  </div>
+
+                  {/* Time */}
+                  <div className="col-span-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3 prithvi-text-electric opacity-40" />
+                    <span className="font-mono text-xs prithvi-text-electric opacity-50">{relTime(u.created_at)}</span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="col-span-2 flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => handleApprove(u.id, u.name)}
+                      disabled={actionId === u.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all disabled:opacity-50"
+                      style={{ background: "rgba(0,255,136,0.12)", color: "var(--prithvi-aurora-green)", border: "1px solid var(--prithvi-aurora-green)" }}
+                    >
+                      {actionId === u.id ? (
+                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                          className="w-3 h-3 border border-current border-t-transparent rounded-full" />
+                      ) : (
+                        <UserCheck className="w-3 h-3" />
+                      )}
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleReject(u.id, u.name)}
+                      disabled={actionId === u.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all disabled:opacity-50"
+                      style={{ background: "rgba(211,47,47,0.12)", color: "var(--prithvi-critical-red)", border: "1px solid var(--prithvi-critical-red)" }}
+                    >
+                      <UserX className="w-3 h-3" />
+                      Reject
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </div>
       )}

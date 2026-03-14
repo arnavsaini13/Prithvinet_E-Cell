@@ -40,6 +40,7 @@ async def list_industries(
 
 @router.get("/industries/enriched", response_model=list[EnrichedIndustryOut])
 async def list_industries_enriched(
+    region: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     _user=Depends(require_citizen),
 ):
@@ -52,7 +53,10 @@ async def list_industries_enriched(
 
     SOURCE: air-quality-api.open-meteo.com
     """
-    result = await db.execute(select(Industry))
+    stmt = select(Industry)
+    if region:
+        stmt = stmt.where(Industry.region == region)
+    result = await db.execute(stmt)
     industries = result.scalars().all()
 
     async def enrich(ind: Industry) -> dict | None:
@@ -72,6 +76,7 @@ async def list_industries_enriched(
             "id":               ind.id,
             "name":             ind.name,
             "location":         ind.location,
+            "region":           ind.region,
             "latitude":         lat,
             "longitude":        lng,
             "compliance_score": data["compliance_score"],

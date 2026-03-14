@@ -61,6 +61,8 @@ export interface UserOut {
   email: string;
   role: string;
   region: string | null;
+  industry_name: string | null;
+  industry_location: string | null;
   is_approved: boolean;
   created_at: string;
 }
@@ -78,6 +80,8 @@ export const authApi = {
     password: string;
     role?: string;
     region?: string;
+    industry_name?: string;
+    industry_location?: string;
   }) =>
     request<UserOut>("/auth/register", {
       method: "POST",
@@ -216,6 +220,7 @@ export interface EnrichedIndustry {
   id: number;
   name: string;
   location: string;
+  region: string | null;
   latitude: number;
   longitude: number;
   compliance_score: number;
@@ -233,7 +238,8 @@ export const industriesApi = {
       `/industries${minCompliance != null ? `?min_compliance=${minCompliance}` : ""}`,
     ),
   /** Live-enriched industry data — compliance score + PM2.5/PM10/SO2/NO2/AQI from Open-Meteo */
-  enriched: () => request<EnrichedIndustry[]>("/industries/enriched"),
+  enriched: (region?: string) =>
+    request<EnrichedIndustry[]>(`/industries/enriched${region ? `?region=${encodeURIComponent(region)}` : ""}`),
 };
 
 // ── GBIF Biodiversity (free, no API key) ─────────
@@ -423,7 +429,10 @@ export interface PendingUser {
   id: number;
   name: string;
   email: string;
+  role: string;
   region: string | null;
+  industry_name: string | null;
+  industry_location: string | null;
   created_at: string;
 }
 

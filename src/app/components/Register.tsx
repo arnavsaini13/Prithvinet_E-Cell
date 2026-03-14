@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { EarthBackground } from "./EarthBackground";
-import { Lock, Mail, User, Shield, Leaf, Eye, EyeOff, CheckCircle, MapPin, ChevronRight } from "lucide-react";
+import { Lock, Mail, User, Shield, Leaf, Eye, EyeOff, CheckCircle, MapPin, ChevronRight, Factory, Building2 } from "lucide-react";
 import { authApi } from "../../api/client";
 
 // Indian regions matching the 6 monitoring stations (value = DB region, label = display name)
@@ -15,20 +15,20 @@ const REGIONS = [
   { value: "Raipur",    label: "Raipur Industrial Station" },
 ];
 
-type RolePick = "citizen" | "regional_officer";
+type RolePick = "citizen" | "regional_officer" | "industry_user";
 
 export function Register() {
   const navigate = useNavigate();
 
-  // Step 1: role picker — Step 2: form
   const [rolePick, setRolePick] = useState<RolePick | null>(null);
 
-  // Form fields
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [region, setRegion] = useState("");
+  const [industryName, setIndustryName] = useState("");
+  const [industryLocation, setIndustryLocation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +40,11 @@ export function Register() {
     if (password !== confirmPassword) { setError("Passwords do not match."); return; }
     if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
     if (rolePick === "regional_officer" && !region.trim()) { setError("Please select your region."); return; }
+    if (rolePick === "industry_user") {
+      if (!industryName.trim()) { setError("Please enter your industry name."); return; }
+      if (!industryLocation.trim()) { setError("Please enter your industry location."); return; }
+      if (!region.trim()) { setError("Please select your region."); return; }
+    }
 
     setIsLoading(true);
     setError("");
@@ -49,7 +54,9 @@ export function Register() {
         email,
         password,
         role: rolePick!,
-        region: rolePick === "regional_officer" ? region : undefined,
+        region: (rolePick === "regional_officer" || rolePick === "industry_user") ? region : undefined,
+        industry_name: rolePick === "industry_user" ? industryName : undefined,
+        industry_location: rolePick === "industry_user" ? industryLocation : undefined,
       });
 
       if (rolePick === "citizen") {
@@ -64,7 +71,7 @@ export function Register() {
     }
   };
 
-  // ── Pending success screen for regional officers ──
+  // ── Pending success screen ──
   if (pendingSuccess) {
     return (
       <div className="relative min-h-screen w-full overflow-hidden">
@@ -91,11 +98,19 @@ export function Register() {
               <h2 className="text-xl font-bold font-mono mb-2 prithvi-text-aurora">
                 Application Submitted!
               </h2>
-              <p className="text-sm leading-relaxed mb-6" style={{ color: "var(--prithvi-atmospheric-teal)" }}>
-                Your Regional Officer registration for{" "}
-                <strong className="prithvi-text-electric">{region}</strong> is pending admin review.
-                You'll be able to log in once an admin approves your account.
-              </p>
+              {rolePick === "industry_user" ? (
+                <p className="text-sm leading-relaxed mb-6" style={{ color: "var(--prithvi-atmospheric-teal)" }}>
+                  Your Industry User registration for{" "}
+                  <strong className="prithvi-text-electric">{industryName}</strong> ({region}) is pending admin review.
+                  You'll be able to log in once an admin approves your account.
+                </p>
+              ) : (
+                <p className="text-sm leading-relaxed mb-6" style={{ color: "var(--prithvi-atmospheric-teal)" }}>
+                  Your Regional Officer registration for{" "}
+                  <strong className="prithvi-text-electric">{region}</strong> is pending admin review.
+                  You'll be able to log in once an admin approves your account.
+                </p>
+              )}
               <Link
                 to="/login"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-mono text-sm font-bold transition-all"
@@ -109,6 +124,16 @@ export function Register() {
       </div>
     );
   }
+
+  const inputStyle = {
+    borderColor: "var(--prithvi-border-dim)",
+    background: "var(--prithvi-glass)",
+  };
+  const inputClass = "w-full pl-11 pr-4 py-3 rounded-lg border font-mono text-sm transition-all prithvi-text-electric bg-transparent outline-none";
+  const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) =>
+    (e.target.style.borderColor = "var(--prithvi-electric-cyan)");
+  const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) =>
+    (e.target.style.borderColor = "var(--prithvi-border-dim)");
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
@@ -135,7 +160,9 @@ export function Register() {
                   ? "CREATE ACCOUNT"
                   : rolePick === "citizen"
                   ? "CITIZEN SIGN UP"
-                  : "REGIONAL OFFICER APPLICATION"}
+                  : rolePick === "regional_officer"
+                  ? "REGIONAL OFFICER APPLICATION"
+                  : "INDUSTRY USER APPLICATION"}
               </h2>
               <p className="text-sm mt-1 opacity-60 prithvi-text-forest">
                 Join India's environmental guardian network
@@ -165,7 +192,7 @@ export function Register() {
                     SELECT ACCOUNT TYPE
                   </p>
 
-                  {/* Citizen option */}
+                  {/* Citizen */}
                   <button
                     onClick={() => setRolePick("citizen")}
                     className="w-full flex items-center gap-4 px-5 py-4 rounded-xl border text-left transition-all group"
@@ -186,7 +213,7 @@ export function Register() {
                     <ChevronRight className="w-4 h-4 prithvi-text-electric opacity-40 group-hover:opacity-80 transition-opacity" />
                   </button>
 
-                  {/* Regional Officer option */}
+                  {/* Regional Officer */}
                   <button
                     onClick={() => setRolePick("regional_officer")}
                     className="w-full flex items-center gap-4 px-5 py-4 rounded-xl border text-left transition-all group"
@@ -204,6 +231,29 @@ export function Register() {
                       </div>
                       <div className="text-xs opacity-60 prithvi-text-electric mt-0.5">
                         Monitor regional data · Requires admin approval
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 prithvi-text-electric opacity-40 group-hover:opacity-80 transition-opacity" />
+                  </button>
+
+                  {/* Industry User */}
+                  <button
+                    onClick={() => setRolePick("industry_user")}
+                    className="w-full flex items-center gap-4 px-5 py-4 rounded-xl border text-left transition-all group"
+                    style={{ background: "var(--prithvi-glass)", borderColor: "var(--prithvi-border-dim)" }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--prithvi-warm-amber)")}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--prithvi-border-dim)")}
+                  >
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                         style={{ background: "rgba(255,167,38,0.12)", border: "1px solid var(--prithvi-warm-amber)" }}>
+                      <Factory className="w-5 h-5" style={{ color: "var(--prithvi-warm-amber)" }} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-mono font-semibold text-sm" style={{ color: "var(--prithvi-warm-amber)" }}>
+                        Industry User
+                      </div>
+                      <div className="text-xs opacity-60 prithvi-text-electric mt-0.5">
+                        Compliance data · Sector-specific access · Requires admin approval
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 prithvi-text-electric opacity-40 group-hover:opacity-80 transition-opacity" />
@@ -242,14 +292,9 @@ export function Register() {
                     <label className="block text-xs font-mono tracking-wider mb-1.5 prithvi-text-electric">FULL NAME</label>
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 prithvi-text-electric opacity-50" />
-                      <input
-                        type="text" value={name} onChange={e => setName(e.target.value)}
+                      <input type="text" value={name} onChange={e => setName(e.target.value)}
                         placeholder="Your full name" required
-                        className="w-full pl-11 pr-4 py-3 rounded-lg border font-mono text-sm transition-all prithvi-text-electric bg-transparent outline-none"
-                        style={{ borderColor: "var(--prithvi-border-dim)", background: "var(--prithvi-glass)" }}
-                        onFocus={e => (e.target.style.borderColor = "var(--prithvi-electric-cyan)")}
-                        onBlur={e  => (e.target.style.borderColor = "var(--prithvi-border-dim)")}
-                      />
+                        className={inputClass} style={{ ...inputStyle }} onFocus={onFocus} onBlur={onBlur} />
                     </div>
                   </div>
 
@@ -258,40 +303,61 @@ export function Register() {
                     <label className="block text-xs font-mono tracking-wider mb-1.5 prithvi-text-electric">EMAIL ADDRESS</label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 prithvi-text-electric opacity-50" />
-                      <input
-                        type="email" value={email} onChange={e => setEmail(e.target.value)}
+                      <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                         placeholder="you@example.com" required
-                        className="w-full pl-11 pr-4 py-3 rounded-lg border font-mono text-sm transition-all prithvi-text-electric bg-transparent outline-none"
-                        style={{ borderColor: "var(--prithvi-border-dim)", background: "var(--prithvi-glass)" }}
-                        onFocus={e => (e.target.style.borderColor = "var(--prithvi-electric-cyan)")}
-                        onBlur={e  => (e.target.style.borderColor = "var(--prithvi-border-dim)")}
-                      />
+                        className={inputClass} style={{ ...inputStyle }} onFocus={onFocus} onBlur={onBlur} />
                     </div>
                   </div>
 
-                  {/* Region — regional officer only */}
-                  {rolePick === "regional_officer" && (
+                  {/* Industry fields — industry_user only */}
+                  {rolePick === "industry_user" && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-mono tracking-wider mb-1.5" style={{ color: "var(--prithvi-warm-amber)" }}>
+                          INDUSTRY NAME
+                        </label>
+                        <div className="relative">
+                          <Factory className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" style={{ color: "var(--prithvi-warm-amber)" }} />
+                          <input type="text" value={industryName} onChange={e => setIndustryName(e.target.value)}
+                            placeholder="e.g. Steel Plant, Cement Factory" required
+                            className={inputClass} style={{ ...inputStyle }} onFocus={onFocus} onBlur={onBlur} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-mono tracking-wider mb-1.5" style={{ color: "var(--prithvi-warm-amber)" }}>
+                          INDUSTRY LOCATION
+                        </label>
+                        <div className="relative">
+                          <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" style={{ color: "var(--prithvi-warm-amber)" }} />
+                          <input type="text" value={industryLocation} onChange={e => setIndustryLocation(e.target.value)}
+                            placeholder="e.g. MIDC, Pune" required
+                            className={inputClass} style={{ ...inputStyle }} onFocus={onFocus} onBlur={onBlur} />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Region — regional_officer or industry_user */}
+                  {(rolePick === "regional_officer" || rolePick === "industry_user") && (
                     <div>
-                      <label className="block text-xs font-mono tracking-wider mb-1.5" style={{ color: "var(--prithvi-electric-cyan)" }}>
-                        YOUR REGION
+                      <label className="block text-xs font-mono tracking-wider mb-1.5"
+                             style={{ color: rolePick === "industry_user" ? "var(--prithvi-warm-amber)" : "var(--prithvi-electric-cyan)" }}>
+                        {rolePick === "industry_user" ? "REGION (MONITORING ZONE)" : "YOUR REGION"}
                       </label>
                       <div className="relative">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50" style={{ color: "var(--prithvi-electric-cyan)" }} />
-                        <select
-                          value={region} onChange={e => setRegion(e.target.value)}
-                          required
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50"
+                                style={{ color: rolePick === "industry_user" ? "var(--prithvi-warm-amber)" : "var(--prithvi-electric-cyan)" }} />
+                        <select value={region} onChange={e => setRegion(e.target.value)} required
                           className="w-full pl-11 pr-4 py-3 rounded-lg border font-mono text-sm transition-all outline-none appearance-none"
                           style={{
-                            borderColor: "var(--prithvi-border-dim)",
-                            background: "var(--prithvi-glass)",
-                            color: region ? "var(--prithvi-electric-cyan)" : "var(--prithvi-atmospheric-teal)",
+                            ...inputStyle,
+                            color: region
+                              ? (rolePick === "industry_user" ? "var(--prithvi-warm-amber)" : "var(--prithvi-electric-cyan)")
+                              : "var(--prithvi-atmospheric-teal)",
                           }}
-                          onFocus={e => (e.target.style.borderColor = "var(--prithvi-electric-cyan)")}
-                          onBlur={e  => (e.target.style.borderColor = "var(--prithvi-border-dim)")}
+                          onFocus={onFocus} onBlur={onBlur}
                         >
-                          <option value="" disabled style={{ background: "#0d1f10" }}>
-                            Select your region…
-                          </option>
+                          <option value="" disabled style={{ background: "#0d1f10" }}>Select region…</option>
                           {REGIONS.map(r => (
                             <option key={r.value} value={r.value} style={{ background: "#0d1f10", color: "var(--prithvi-electric-cyan)" }}>
                               {r.label}
@@ -307,14 +373,10 @@ export function Register() {
                     <label className="block text-xs font-mono tracking-wider mb-1.5 prithvi-text-electric">PASSWORD</label>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 prithvi-text-electric opacity-50" />
-                      <input
-                        type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
+                      <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
                         placeholder="Min. 6 characters" required
                         className="w-full pl-11 pr-11 py-3 rounded-lg border font-mono text-sm transition-all prithvi-text-electric bg-transparent outline-none"
-                        style={{ borderColor: "var(--prithvi-border-dim)", background: "var(--prithvi-glass)" }}
-                        onFocus={e => (e.target.style.borderColor = "var(--prithvi-electric-cyan)")}
-                        onBlur={e  => (e.target.style.borderColor = "var(--prithvi-border-dim)")}
-                      />
+                        style={{ ...inputStyle }} onFocus={onFocus} onBlur={onBlur} />
                       <button type="button" onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80 prithvi-text-electric">
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -327,14 +389,10 @@ export function Register() {
                     <label className="block text-xs font-mono tracking-wider mb-1.5 prithvi-text-electric">CONFIRM PASSWORD</label>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 prithvi-text-electric opacity-50" />
-                      <input
-                        type={showPassword ? "text" : "password"} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                      <input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                         placeholder="Repeat password" required
                         className="w-full pl-11 pr-11 py-3 rounded-lg border font-mono text-sm transition-all prithvi-text-electric bg-transparent outline-none"
-                        style={{ borderColor: "var(--prithvi-border-dim)", background: "var(--prithvi-glass)" }}
-                        onFocus={e => (e.target.style.borderColor = "var(--prithvi-electric-cyan)")}
-                        onBlur={e  => (e.target.style.borderColor = "var(--prithvi-border-dim)")}
-                      />
+                        style={{ ...inputStyle }} onFocus={onFocus} onBlur={onBlur} />
                       {confirmPassword && (
                         <div className="absolute right-4 top-1/2 -translate-y-1/2">
                           {password === confirmPassword
@@ -345,11 +403,17 @@ export function Register() {
                     </div>
                   </div>
 
-                  {/* Approval notice for regional officers */}
-                  {rolePick === "regional_officer" && (
+                  {/* Approval notice */}
+                  {(rolePick === "regional_officer" || rolePick === "industry_user") && (
                     <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs font-mono"
-                         style={{ background: "rgba(0,200,255,0.07)", borderLeft: "3px solid var(--prithvi-electric-cyan)", color: "var(--prithvi-atmospheric-teal)" }}>
-                      <Shield className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "var(--prithvi-electric-cyan)" }} />
+                         style={{
+                           background: rolePick === "industry_user" ? "rgba(255,167,38,0.07)" : "rgba(0,200,255,0.07)",
+                           borderLeft: `3px solid ${rolePick === "industry_user" ? "var(--prithvi-warm-amber)" : "var(--prithvi-electric-cyan)"}`,
+                           color: "var(--prithvi-atmospheric-teal)",
+                         }}>
+                      {rolePick === "industry_user"
+                        ? <Factory className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "var(--prithvi-warm-amber)" }} />
+                        : <Shield className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "var(--prithvi-electric-cyan)" }} />}
                       Your application will be reviewed by an admin before you can log in.
                     </div>
                   )}
@@ -369,7 +433,11 @@ export function Register() {
                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                     className="w-full py-3.5 rounded-lg font-mono font-bold tracking-wider text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     style={{
-                      background: rolePick === "citizen" ? "var(--prithvi-aurora-green)" : "var(--prithvi-electric-cyan)",
+                      background: rolePick === "citizen"
+                        ? "var(--prithvi-aurora-green)"
+                        : rolePick === "industry_user"
+                        ? "var(--prithvi-warm-amber)"
+                        : "var(--prithvi-electric-cyan)",
                       color: "#000",
                     }}
                   >
@@ -381,6 +449,8 @@ export function Register() {
                       </>
                     ) : rolePick === "citizen" ? (
                       <><Leaf className="w-4 h-4" /> JOIN AS CITIZEN</>
+                    ) : rolePick === "industry_user" ? (
+                      <><Factory className="w-4 h-4" /> SUBMIT APPLICATION</>
                     ) : (
                       <><Shield className="w-4 h-4" /> SUBMIT APPLICATION</>
                     )}

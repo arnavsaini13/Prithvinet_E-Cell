@@ -55,8 +55,8 @@ async def register(
                 detail="Only admins can assign the admin role.",
             )
         assigned_role = payload.role.value
-        # Regional officers require admin approval; all others auto-approved
-        approved = assigned_role != "regional_officer"
+        # Regional officers and industry users require admin approval; all others auto-approved
+        approved = assigned_role not in ("regional_officer", "industry_user")
 
     user = User(
         name=payload.name,
@@ -64,6 +64,8 @@ async def register(
         password_hash=hash_password(payload.password),
         role=assigned_role,
         region=payload.region,
+        industry_name=payload.industry_name,
+        industry_location=payload.industry_location,
         is_approved=approved,
     )
     db.add(user)

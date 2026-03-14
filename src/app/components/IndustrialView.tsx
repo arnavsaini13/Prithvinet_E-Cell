@@ -26,6 +26,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { industriesApi, type EnrichedIndustry } from "../../api/client";
+import { useAuth } from "../context/AuthContext";
 
 
 function complianceColor(score: number): string {
@@ -41,6 +42,7 @@ function complianceLabel(score: number): string {
 }
 
 export function IndustrialView() {
+  const { user, role } = useAuth();
   const [industries, setIndustries] = useState<EnrichedIndustry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +51,8 @@ export function IndustrialView() {
   async function fetchData() {
     setError(null);
     try {
-      const data = await industriesApi.enriched();
+      const isOfficer = role === "regional_officer" && !!user?.region;
+      const data = await industriesApi.enriched(isOfficer ? user!.region! : undefined);
       setIndustries(data);
       setLastUpdated(new Date());
     } catch (err: any) {
@@ -64,7 +67,7 @@ export function IndustrialView() {
     fetchData();
     const id = setInterval(fetchData, 300_000); // refresh every 5 minutes
     return () => clearInterval(id);
-  }, []);
+  }, [role, user?.region]);
 
   const avgCompliance =
     industries.length > 0

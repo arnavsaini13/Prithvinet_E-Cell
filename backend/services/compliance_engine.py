@@ -28,12 +28,12 @@ logger = logging.getLogger(__name__)
 # ── Real GPS coordinates for each seeded industry ──────────────────────────
 # Source: verified plant/facility locations via public records
 INDUSTRY_COORDS: dict[str, tuple[float, float]] = {
-    "Tata Steel Works":    (22.8046, 86.2029),   # Jamshedpur, Jharkhand
-    "Reliance Refinery":   (22.4707, 70.0577),   # Jamnagar, Gujarat
-    "Hindalco Aluminium":  (24.2167, 83.0333),   # Renukoot, UP
-    "Vedanta Smelter":     ( 8.7642, 78.1348),   # Tuticorin, Tamil Nadu
-    "ACC Cement Plant":    (17.0833, 76.9833),   # Wadi, Karnataka
-    "NTPC Thermal Power":  (24.2000, 82.6500),   # Singrauli, Madhya Pradesh
+    "Maruti Suzuki Manesar":   (28.3527, 76.9340),   # Manesar, Haryana (Delhi region)
+    "HPCL Mumbai Refinery":    (19.0447, 72.9063),   # Chembur, Mumbai
+    "HAL Aerospace Bangalore": (12.9489, 77.6735),   # HAL Area, Bangalore
+    "Hyundai Motor Chennai":   (12.7277, 79.9808),   # Sriperumbudur, Chennai
+    "CESC Budge Budge Plant":  (22.4742, 88.1676),   # Budge Budge, Kolkata
+    "Bhilai Steel Plant":      (21.2091, 81.4277),   # Bhilai, Chhattisgarh (Raipur region)
 }
 
 

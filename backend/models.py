@@ -23,6 +23,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(300), nullable=False)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="citizen")
     region: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    industry_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    industry_location: Mapped[str | None] = mapped_column(String(300), nullable=True)
     is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 

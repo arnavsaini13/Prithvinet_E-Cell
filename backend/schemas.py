@@ -25,6 +25,8 @@ class UserRegisterIn(BaseModel):
     password: str
     role: UserRole = UserRole.citizen
     region: str | None = None
+    industry_name: str | None = None
+    industry_location: str | None = None
 
 
 class UserLoginIn(BaseModel):
@@ -44,6 +46,8 @@ class UserOut(BaseModel):
     email: str
     role: str
     region: str | None
+    industry_name: str | None
+    industry_location: str | None
     is_approved: bool
     created_at: datetime
 
@@ -54,7 +58,10 @@ class PendingUserOut(BaseModel):
     id: int
     name: str
     email: str
+    role: str
     region: str | None
+    industry_name: str | None
+    industry_location: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -152,6 +159,7 @@ class EnrichedIndustryOut(BaseModel):
     id: int
     name: str
     location: str
+    region: str | None = None
     latitude: float
     longitude: float
     compliance_score: float
