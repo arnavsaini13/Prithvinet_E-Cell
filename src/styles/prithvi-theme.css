@@ -1,0 +1,557 @@
+/* PrithviNet Environmental Intelligence Platform - Custom Theme */
+
+:root {
+  /* Primary Environmental Palette */
+  --prithvi-deep-forest: #0a3d2c;
+  --prithvi-forest-bright: #1a5d45;
+  --prithvi-ocean-deep: #0c1e3a;
+  --prithvi-ocean-blue: #1a3d66;
+  --prithvi-ocean-bright: #2563a8;
+  --prithvi-atmospheric-teal: #0d5959;
+  --prithvi-teal-bright: #1a8080;
+  
+  /* Background - Deep space and atmospheric layers */
+  --prithvi-deep-space: #050a14;
+  --prithvi-space-layer: #0a1220;
+  --prithvi-atmosphere-layer: #0d1a2e;
+  
+  /* Secondary Accent Colors - Environmental Indicators */
+  --prithvi-aurora-green: #00ff88;
+  --prithvi-aurora-glow: rgba(0, 255, 136, 0.4);
+  --prithvi-aurora-dim: rgba(0, 255, 136, 0.15);
+  --prithvi-electric-cyan: #00e5ff;
+  --prithvi-cyan-glow: rgba(0, 229, 255, 0.4);
+  --prithvi-cyan-dim: rgba(0, 229, 255, 0.15);
+  --prithvi-warm-amber: #ffa726;
+  --prithvi-amber-glow: rgba(255, 167, 38, 0.4);
+  --prithvi-critical-red: #d32f2f;
+  --prithvi-red-glow: rgba(211, 47, 47, 0.4);
+  
+  /* Legacy compatibility colors */
+  --prithvi-teal: #00ffcc;
+  --prithvi-teal-glow: rgba(0, 255, 204, 0.3);
+  --prithvi-green: #00ff88;
+  --prithvi-green-glow: rgba(0, 255, 136, 0.3);
+  --prithvi-cyan: #00e5ff;
+  --prithvi-amber: #ffa726;
+  --prithvi-orange: #ff6b35;
+  --prithvi-orange-glow: rgba(255, 107, 53, 0.3);
+  --prithvi-red: #d32f2f;
+  
+  /* Grid and borders with atmospheric teal tint */
+  --prithvi-grid: rgba(26, 128, 128, 0.12);
+  --prithvi-border-dim: rgba(0, 229, 255, 0.2);
+  --prithvi-border-bright: rgba(0, 229, 255, 0.5);
+  
+  /* Panel backgrounds with layered depth */
+  --prithvi-panel-bg: rgba(10, 18, 32, 0.85);
+  --prithvi-panel-bg-solid: rgba(13, 26, 46, 0.95);
+  --prithvi-glass: rgba(26, 61, 102, 0.25);
+  --prithvi-glass-bright: rgba(26, 128, 128, 0.15);
+}
+
+/* Atmospheric gradient overlays - Earth-inspired */
+.prithvi-gradient-earth {
+  background: radial-gradient(ellipse at top, 
+    rgba(0, 229, 255, 0.08) 0%,
+    rgba(26, 128, 128, 0.05) 25%,
+    rgba(10, 61, 44, 0.03) 50%,
+    transparent 100%);
+}
+
+.prithvi-gradient-ocean {
+  background: linear-gradient(135deg,
+    rgba(26, 61, 102, 0.3) 0%,
+    rgba(13, 89, 89, 0.2) 50%,
+    rgba(10, 61, 44, 0.15) 100%);
+}
+
+.prithvi-gradient-atmosphere {
+  background: linear-gradient(180deg, 
+    rgba(0, 229, 255, 0.12) 0%,
+    rgba(26, 128, 128, 0.08) 30%,
+    rgba(10, 61, 44, 0.04) 70%,
+    transparent 100%);
+}
+
+.prithvi-gradient-forest {
+  background: linear-gradient(to bottom,
+    rgba(26, 93, 69, 0.2) 0%,
+    rgba(10, 61, 44, 0.3) 50%,
+    rgba(10, 61, 44, 0.15) 100%);
+}
+
+/* Multi-layered atmospheric background */
+.prithvi-atmosphere-bg {
+  background: 
+    radial-gradient(ellipse at 20% 30%, rgba(0, 255, 136, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(0, 229, 255, 0.08) 0%, transparent 50%),
+    linear-gradient(180deg, rgba(13, 26, 46, 0.9) 0%, rgba(5, 10, 20, 0.95) 100%);
+}
+
+/* Glow effects */
+.prithvi-glow-aurora {
+  box-shadow: 
+    0 0 15px var(--prithvi-aurora-glow),
+    0 0 30px var(--prithvi-aurora-glow),
+    0 0 45px var(--prithvi-aurora-dim);
+}
+
+.prithvi-glow-electric {
+  box-shadow: 
+    0 0 12px var(--prithvi-cyan-glow),
+    0 0 25px var(--prithvi-cyan-glow),
+    0 0 40px var(--prithvi-cyan-dim);
+}
+
+.prithvi-glow-amber {
+  box-shadow: 
+    0 0 15px var(--prithvi-amber-glow),
+    0 0 30px var(--prithvi-amber-glow);
+}
+
+.prithvi-glow-critical {
+  box-shadow: 
+    0 0 15px var(--prithvi-red-glow),
+    0 0 30px var(--prithvi-red-glow);
+}
+
+.prithvi-glow-cyan {
+  box-shadow: 0 0 20px var(--prithvi-cyan-glow), 
+              0 0 40px var(--prithvi-cyan-glow);
+}
+
+.prithvi-glow-teal {
+  box-shadow: 0 0 20px var(--prithvi-teal-glow), 
+              0 0 40px var(--prithvi-teal-glow);
+}
+
+.prithvi-glow-green {
+  box-shadow: 0 0 20px var(--prithvi-green-glow);
+}
+
+/* Subtle inner glow for panels and cards */
+.prithvi-inner-glow {
+  box-shadow: 
+    inset 0 0 30px rgba(0, 229, 255, 0.08),
+    inset 0 0 60px rgba(26, 128, 128, 0.05);
+}
+
+.prithvi-inner-glow-forest {
+  box-shadow: 
+    inset 0 0 30px rgba(0, 255, 136, 0.08),
+    inset 0 0 60px rgba(26, 93, 69, 0.05);
+}
+
+.prithvi-inner-glow-ocean {
+  box-shadow: 
+    inset 0 0 30px rgba(37, 99, 168, 0.12),
+    inset 0 0 60px rgba(26, 61, 102, 0.08);
+}
+
+/* Animated border scan effect */
+@keyframes border-scan {
+  0%, 100% {
+    border-color: var(--prithvi-border-dim);
+  }
+  50% {
+    border-color: var(--prithvi-border-bright);
+  }
+}
+
+.prithvi-border-scan {
+  animation: border-scan 3s ease-in-out infinite;
+}
+
+/* Data pulse animation */
+@keyframes data-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.prithvi-pulse {
+  animation: data-pulse 2s ease-in-out infinite;
+}
+
+/* Scanline effect */
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.prithvi-scanline::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent, 
+    var(--prithvi-cyan), 
+    transparent);
+  animation: scanline 3s linear infinite;
+  pointer-events: none;
+}
+
+/* Grid overlay pattern */
+.prithvi-grid-overlay {
+  background-image: 
+    linear-gradient(var(--prithvi-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--prithvi-grid) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+/* Environmental status indicators */
+.status-optimal {
+  color: var(--prithvi-green);
+  text-shadow: 0 0 10px var(--prithvi-green-glow);
+}
+
+.status-warning {
+  color: var(--prithvi-amber);
+  text-shadow: 0 0 10px var(--prithvi-amber-glow);
+}
+
+.status-critical {
+  color: var(--prithvi-red);
+  text-shadow: 0 0 10px var(--prithvi-red-glow);
+}
+
+/* Holographic text effect */
+.prithvi-holo-text {
+  color: var(--prithvi-cyan);
+  text-shadow: 
+    0 0 10px var(--prithvi-cyan-glow),
+    0 0 20px var(--prithvi-cyan-glow),
+    0 0 30px var(--prithvi-cyan-glow);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.05em;
+}
+
+/* Rotating orbital animation */
+@keyframes orbit-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.prithvi-orbit {
+  animation: orbit-rotate 60s linear infinite;
+}
+
+/* Environmental border styles */
+.prithvi-border-aurora {
+  border: 1px solid var(--prithvi-aurora-green);
+  box-shadow: 
+    0 0 10px var(--prithvi-aurora-dim),
+    inset 0 0 10px var(--prithvi-aurora-dim);
+}
+
+.prithvi-border-ocean {
+  border: 1px solid var(--prithvi-ocean-blue);
+  box-shadow: 
+    0 0 8px rgba(26, 61, 102, 0.3),
+    inset 0 0 8px rgba(26, 61, 102, 0.2);
+}
+
+.prithvi-border-forest {
+  border: 1px solid var(--prithvi-forest-bright);
+  box-shadow: 
+    0 0 8px rgba(26, 93, 69, 0.3),
+    inset 0 0 8px rgba(26, 93, 69, 0.2);
+}
+
+.prithvi-border-electric {
+  border: 1px solid var(--prithvi-electric-cyan);
+  box-shadow: 
+    0 0 10px var(--prithvi-cyan-dim),
+    inset 0 0 10px var(--prithvi-cyan-dim);
+}
+
+/* Atmospheric shimmer animation */
+@keyframes atmospheric-shimmer {
+  0%, 100% {
+    background-position: 0% 50%;
+    opacity: 0.6;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 0.9;
+  }
+}
+
+.prithvi-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 229, 255, 0.1) 25%,
+    rgba(0, 255, 136, 0.1) 50%,
+    rgba(0, 229, 255, 0.1) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: atmospheric-shimmer 4s ease-in-out infinite;
+}
+
+/* Layered card effect with depth */
+.prithvi-card-layered {
+  background: var(--prithvi-panel-bg);
+  border: 1px solid var(--prithvi-border-dim);
+  position: relative;
+  overflow: hidden;
+}
+
+.prithvi-card-layered::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--x, 50%) var(--y, 50%),
+    rgba(0, 229, 255, 0.08) 0%,
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.prithvi-card-layered:hover::before {
+  opacity: 1;
+}
+
+/* Pulsing indicator dot */
+@keyframes indicator-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+.prithvi-indicator-pulse {
+  animation: indicator-pulse 2s ease-in-out infinite;
+}
+
+/* Text glow variants */
+.prithvi-text-aurora {
+  color: var(--prithvi-aurora-green);
+  text-shadow: 0 0 12px var(--prithvi-aurora-glow);
+}
+
+.prithvi-text-ocean {
+  color: var(--prithvi-ocean-bright);
+  text-shadow: 0 0 12px rgba(37, 99, 168, 0.5);
+}
+
+.prithvi-text-forest {
+  color: var(--prithvi-forest-bright);
+  text-shadow: 0 0 12px rgba(26, 93, 69, 0.5);
+}
+
+.prithvi-text-electric {
+  color: var(--prithvi-electric-cyan);
+  text-shadow: 0 0 12px var(--prithvi-cyan-glow);
+}
+
+/* Atmospheric overlay for sections */
+.prithvi-section-atmosphere {
+  position: relative;
+  isolation: isolate;
+}
+
+.prithvi-section-atmosphere::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse at top left, rgba(0, 255, 136, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at bottom right, rgba(0, 229, 255, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Animated environmental data flow */
+@keyframes data-flow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.prithvi-data-flow {
+  position: relative;
+  overflow: hidden;
+}
+
+.prithvi-data-flow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 229, 255, 0.1),
+    transparent
+  );
+  animation: data-flow 3s ease-in-out infinite;
+}
+
+/* Elevation layers for depth */
+.prithvi-elevation-1 {
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 15px var(--prithvi-cyan-dim);
+}
+
+.prithvi-elevation-2 {
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 0 20px var(--prithvi-cyan-dim);
+}
+
+.prithvi-elevation-3 {
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    0 0 30px var(--prithvi-cyan-dim);
+}
+
+/* Interactive hover states */
+.prithvi-interactive {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.prithvi-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.4),
+    0 0 25px var(--prithvi-cyan-glow);
+}
+
+/* Status badge styles */
+.prithvi-badge-optimal {
+  background: var(--prithvi-aurora-dim);
+  border: 1px solid var(--prithvi-aurora-green);
+  color: var(--prithvi-aurora-green);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-family: monospace;
+  text-shadow: 0 0 8px var(--prithvi-aurora-glow);
+}
+
+.prithvi-badge-warning {
+  background: var(--prithvi-amber-glow);
+  border: 1px solid var(--prithvi-warm-amber);
+  color: var(--prithvi-warm-amber);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-family: monospace;
+  text-shadow: 0 0 8px var(--prithvi-amber-glow);
+}
+
+.prithvi-badge-critical {
+  background: var(--prithvi-red-glow);
+  border: 1px solid var(--prithvi-critical-red);
+  color: var(--prithvi-critical-red);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-family: monospace;
+  text-shadow: 0 0 8px var(--prithvi-red-glow);
+}
+
+/* Input field styling for consistent PrithviNet aesthetic */
+.prithvi-input-field {
+  color: var(--prithvi-electric-cyan);
+  border-color: var(--prithvi-border-dim);
+  transition: all 0.3s ease;
+}
+
+.prithvi-input-field:focus {
+  outline: none;
+  border-color: var(--prithvi-border-bright);
+  box-shadow: 0 0 15px var(--prithvi-cyan-glow);
+}
+
+.prithvi-input-field::placeholder {
+  color: var(--prithvi-text-dim);
+  opacity: 0.5;
+}
+
+/* Timeline slider styling */
+.prithvi-timeline-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+  border-radius: 8px;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+}
+
+.prithvi-timeline-slider:hover {
+  opacity: 1;
+}
+
+.prithvi-timeline-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--prithvi-electric-cyan);
+  cursor: pointer;
+  box-shadow: 0 0 20px var(--prithvi-cyan-glow), 0 0 40px var(--prithvi-cyan-glow);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.prithvi-timeline-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 30px var(--prithvi-cyan-glow), 0 0 60px var(--prithvi-cyan-glow);
+}
+
+.prithvi-timeline-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--prithvi-electric-cyan);
+  cursor: pointer;
+  box-shadow: 0 0 20px var(--prithvi-cyan-glow), 0 0 40px var(--prithvi-cyan-glow);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.prithvi-timeline-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 30px var(--prithvi-cyan-glow), 0 0 60px var(--prithvi-cyan-glow);
+}
+
+/* Critical glow for high risk indicators */
+.prithvi-inner-glow-critical {
+  box-shadow: 
+    inset 0 0 30px rgba(211, 47, 47, 0.12),
+    inset 0 0 60px rgba(211, 47, 47, 0.08);
+}

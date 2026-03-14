@@ -1,0 +1,378 @@
+import { motion } from "motion/react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { EarthBackground } from "./EarthBackground";
+import { Lock, Mail, Shield, User, Building, ChevronDown } from "lucide-react";
+import { authApi } from "../../api/client";
+
+const ROLE_MAP: Record<string, string> = {
+  admin: 'admin',
+  regional: 'regional_officer',
+  industry: 'industry_user',
+  citizen: 'citizen',
+};
+
+const roles = [
+  { id: 'admin', name: 'Admin', description: 'Full system access', requiresApproval: true },
+  { id: 'regional', name: 'Regional Officer', description: 'Regional monitoring', requiresApproval: true },
+  { id: 'industry', name: 'Industry User', description: 'Sector-specific data', requiresApproval: true },
+  { id: 'citizen', name: 'Citizen', description: 'Public environmental data', requiresApproval: false },
+];
+
+export function Register() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    organization: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [selectedRole, setSelectedRole] = useState('citizen');
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await authApi.register({
+        name: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        role: ROLE_MAP[selectedRole] || 'citizen',
+      });
+      navigate('/login');
+    } catch (err: any) {
+      setError(err.message || 'Registration failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const selectedRoleData = roles.find(r => r.id === selectedRole);
+
+  return (
+    <div className="relative min-h-screen w-full overflow-hidden">
+      <EarthBackground />
+      
+      {/* Content overlay */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-6 py-12">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="w-full max-w-2xl"
+        >
+          {/* Logo and header */}
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mb-6"
+            >
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <div className="w-12 h-12 rounded-lg prithvi-gradient-earth prithvi-glow-aurora flex items-center justify-center border prithvi-border-aurora">
+                  <Shield className="w-7 h-7 prithvi-text-aurora" />
+                </div>
+                <h1 className="text-4xl font-bold font-mono prithvi-holo-text">
+                  PrithviNet
+                </h1>
+              </div>
+              <h2 className="text-xl font-mono tracking-wider prithvi-text-electric">
+                REQUEST SYSTEM ACCESS
+              </h2>
+              <p className="text-sm mt-2 opacity-60 prithvi-text-forest">
+                Join India's environmental intelligence network
+              </p>
+            </motion.div>
+          </div>
+
+          {/* Registration form panel */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="backdrop-blur-xl rounded-2xl border p-8 prithvi-card-layered prithvi-inner-glow prithvi-elevation-3"
+            style={{
+              background: 'var(--prithvi-panel-bg)',
+              borderColor: 'var(--prithvi-border-bright)',
+            }}
+          >
+            <form onSubmit={handleRegister} className="space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                {/* Full name */}
+                <div>
+                  <label className="block text-xs font-mono tracking-wider mb-2 prithvi-text-electric">
+                    FULL NAME
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 prithvi-text-electric opacity-60" />
+                    <input
+                      type="text"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      placeholder="John Doe"
+                      required
+                      className="w-full pl-12 pr-4 py-3 rounded-lg border prithvi-input-field font-mono text-sm transition-all"
+                      style={{
+                        background: 'var(--prithvi-glass)',
+                        borderColor: 'var(--prithvi-border-dim)',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-xs font-mono tracking-wider mb-2 prithvi-text-electric">
+                    EMAIL ADDRESS
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 prithvi-text-electric opacity-60" />
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="user@organization.org"
+                      required
+                      className="w-full pl-12 pr-4 py-3 rounded-lg border prithvi-input-field font-mono text-sm transition-all"
+                      style={{
+                        background: 'var(--prithvi-glass)',
+                        borderColor: 'var(--prithvi-border-dim)',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Role selector */}
+              <div>
+                <label className="block text-xs font-mono tracking-wider mb-2 prithvi-text-electric">
+                  ACCESS ROLE
+                </label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                    className="w-full px-4 py-3 rounded-lg border prithvi-input-field font-mono text-sm flex items-center justify-between transition-all"
+                    style={{
+                      background: 'var(--prithvi-glass)',
+                      borderColor: isRoleDropdownOpen ? 'var(--prithvi-border-bright)' : 'var(--prithvi-border-dim)',
+                    }}
+                  >
+                    <div className="text-left flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="prithvi-text-aurora font-medium">
+                          {selectedRoleData?.name}
+                        </span>
+                        {selectedRoleData?.requiresApproval && (
+                          <span className="text-xs px-2 py-0.5 rounded prithvi-badge-warning">
+                            REQUIRES APPROVAL
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs opacity-60 prithvi-text-electric mt-0.5">
+                        {selectedRoleData?.description}
+                      </div>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 prithvi-text-electric transition-transform ${isRoleDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Dropdown */}
+                  {isRoleDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute top-full left-0 right-0 mt-2 rounded-lg border backdrop-blur-xl overflow-hidden z-20 prithvi-elevation-2"
+                      style={{
+                        background: 'var(--prithvi-panel-bg-solid)',
+                        borderColor: 'var(--prithvi-border-bright)',
+                      }}
+                    >
+                      {roles.map((role) => (
+                        <button
+                          key={role.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedRole(role.id);
+                            setIsRoleDropdownOpen(false);
+                          }}
+                          className={`w-full px-4 py-3 text-left hover:bg-opacity-50 transition-all border-b border-opacity-20 ${
+                            selectedRole === role.id ? 'prithvi-glow-aurora' : ''
+                          }`}
+                          style={{
+                            background: selectedRole === role.id ? 'var(--prithvi-glass)' : 'transparent',
+                            borderColor: 'var(--prithvi-border-dim)',
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={selectedRole === role.id ? 'prithvi-text-aurora' : 'prithvi-text-electric'}>
+                              {role.name}
+                            </span>
+                            {role.requiresApproval && (
+                              <span className="text-xs px-2 py-0.5 rounded prithvi-badge-warning">
+                                APPROVAL
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs opacity-60 prithvi-text-forest mt-0.5">
+                            {role.description}
+                          </div>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+
+              {/* Organization */}
+              <div>
+                <label className="block text-xs font-mono tracking-wider mb-2 prithvi-text-electric">
+                  ORGANIZATION
+                </label>
+                <div className="relative">
+                  <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 prithvi-text-electric opacity-60" />
+                  <input
+                    type="text"
+                    value={formData.organization}
+                    onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                    placeholder="Environmental Research Institute"
+                    required
+                    className="w-full pl-12 pr-4 py-3 rounded-lg border prithvi-input-field font-mono text-sm transition-all"
+                    style={{
+                      background: 'var(--prithvi-glass)',
+                      borderColor: 'var(--prithvi-border-dim)',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                {/* Password */}
+                <div>
+                  <label className="block text-xs font-mono tracking-wider mb-2 prithvi-text-electric">
+                    PASSWORD
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 prithvi-text-electric opacity-60" />
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="••••••••••••"
+                      required
+                      className="w-full pl-12 pr-4 py-3 rounded-lg border prithvi-input-field font-mono text-sm transition-all"
+                      style={{
+                        background: 'var(--prithvi-glass)',
+                        borderColor: 'var(--prithvi-border-dim)',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Confirm password */}
+                <div>
+                  <label className="block text-xs font-mono tracking-wider mb-2 prithvi-text-electric">
+                    CONFIRM PASSWORD
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 prithvi-text-electric opacity-60" />
+                    <input
+                      type="password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                      placeholder="••••••••••••"
+                      required
+                      className="w-full pl-12 pr-4 py-3 rounded-lg border prithvi-input-field font-mono text-sm transition-all"
+                      style={{
+                        background: 'var(--prithvi-glass)',
+                        borderColor: 'var(--prithvi-border-dim)',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Terms notice */}
+              {selectedRoleData?.requiresApproval && (
+                <div className="p-4 rounded-lg border-l-4 prithvi-glow-amber"
+                     style={{
+                       background: 'var(--prithvi-glass)',
+                       borderLeftColor: 'var(--prithvi-warm-amber)'
+                     }}>
+                  <p className="text-xs font-mono prithvi-text-electric">
+                    This role requires administrative approval. You will receive an email notification once your request has been reviewed.
+                  </p>
+                </div>
+              )}
+
+              {/* Error message */}
+              {error && (
+                <div className="p-3 rounded-lg border text-xs font-mono text-center"
+                     style={{ background: 'rgba(211, 47, 47, 0.1)', borderColor: 'var(--prithvi-critical-red)', color: 'var(--prithvi-critical-red)' }}>
+                  {error}
+                </div>
+              )}
+
+              {/* Submit button */}
+              <motion.button
+                type="submit"
+                disabled={isLoading}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-4 rounded-lg font-mono tracking-wider prithvi-gradient-earth prithvi-glow-aurora border prithvi-border-aurora transition-all disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <motion.div
+                      className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                    PROCESSING REQUEST...
+                  </span>
+                ) : (
+                  'REQUEST ACCESS'
+                )}
+              </motion.button>
+
+              {/* Login link */}
+              <div className="text-center pt-4 border-t border-opacity-20" style={{ borderColor: 'var(--prithvi-border-dim)' }}>
+                <span className="text-sm prithvi-text-electric opacity-60">
+                  Already have access?{' '}
+                </span>
+                <Link
+                  to="/login"
+                  className="text-sm font-mono prithvi-text-aurora hover:opacity-80 transition-opacity"
+                >
+                  Sign In
+                </Link>
+              </div>
+            </form>
+          </motion.div>
+
+          {/* Footer info */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="mt-6 text-center text-xs font-mono opacity-50 prithvi-text-electric"
+          >
+            By registering, you agree to PrithviNet's Terms of Service and Privacy Policy
+          </motion.div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}

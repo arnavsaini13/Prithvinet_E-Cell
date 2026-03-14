@@ -1,0 +1,30 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+@import './prithvi-theme.css';
+
+/* Custom scrollbar for PrithviNet */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--prithvi-deep-space);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--prithvi-atmosphere);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--prithvi-cyan);
+}
+
+/* Force dark theme for PrithviNet */
+body {
+  background: var(--prithvi-deep-space) !important;
+  color: var(--prithvi-cyan) !important;
+  overflow-x: hidden;
+}
