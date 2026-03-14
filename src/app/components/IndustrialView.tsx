@@ -24,8 +24,10 @@ import {
   Wind,
   RefreshCw,
   AlertCircle,
+  MessageSquare,
+  Shield,
 } from "lucide-react";
-import { industriesApi, warningsApi, type EnrichedIndustry } from "../../api/client";
+import { industriesApi, warningsApi, type EnrichedIndustry, type IndustryWarning } from "../../api/client";
 import { useAuth } from "../context/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 
@@ -66,6 +68,12 @@ export function IndustrialView() {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Chat / conversation view state
+  const [chatTarget, setChatTarget] = useState<EnrichedIndustry | null>(null);
+  const [chatWarnings, setChatWarnings] = useState<IndustryWarning[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -97,6 +105,20 @@ export function IndustrialView() {
     }
   }
 
+  async function openChat(ind: EnrichedIndustry) {
+    setChatTarget(ind);
+    setChatWarnings([]);
+    setChatLoading(true);
+    try {
+      const data = await warningsApi.industryWarnings(ind.id);
+      setChatWarnings(data);
+    } catch {
+      setChatWarnings([]);
+    } finally {
+      setChatLoading(false);
+    }
+  }
+
   async function fetchData() {
     setError(null);
     try {
@@ -117,6 +139,11 @@ export function IndustrialView() {
     const id = setInterval(fetchData, 300_000); // refresh every 5 minutes
     return () => clearInterval(id);
   }, [role, user?.region]);
+
+  // Auto-scroll conversation to bottom when loaded
+  useEffect(() => {
+    if (!chatLoading) chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatLoading, chatWarnings]);
 
   const isOfficer = role === "regional_officer";
 
@@ -271,7 +298,120 @@ export function IndustrialView() {
         </DialogContent>
       </Dialog>
 
-      {/* Header */}
+      {/* ── Conversation view Dialog — officer reads industry replies ── */}
+      <Dialog open={!!chatTarget} onOpenChange={(open) => { if (!open) setChatTarget(null); }}>
+        <DialogContent
+          className="max-w-lg border backdrop-blur-xl flex flex-col"
+          style={{ background: "var(--prithvi-panel-bg)", borderColor: "var(--prithvi-border-bright)", maxHeight: "80vh" }}
+        >
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="font-mono prithvi-text-electric flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 prithvi-text-ocean" />
+              CONVERSATION — {chatTarget?.name}
+            </DialogTitle>
+            <p className="text-[10px] font-mono opacity-40 prithvi-text-forest mt-0.5">
+              Your notices and {chatTarget?.name}'s corrective action replies
+            </p>
+          </DialogHeader>
+
+          {/* Messages area */}
+          <div className="flex-1 overflow-y-auto py-2 px-1 space-y-4" style={{ minHeight: 0 }}>
+            {chatLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <motion.div
+                  className="w-5 h-5 border-2 border-t-transparent rounded-full"
+                  style={{ borderColor: "var(--prithvi-electric-cyan)" }}
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                />
+              </div>
+            ) : chatWarnings.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
+                <MessageSquare className="w-8 h-8 mb-2 prithvi-text-electric" />
+                <p className="text-xs font-mono prithvi-text-electric">No notices sent yet</p>
+                <p className="text-[10px] mt-1 prithvi-text-forest">Use the Warn button to send a notice</p>
+              </div>
+            ) : (
+              chatWarnings.map((w) => {
+                const sColor = severityColor(w.severity);
+                return (
+                  <div key={w.id} className="space-y-2">
+                    {/* Officer warning — left bubble */}
+                    <div className="flex items-start gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                           style={{ background: `${sColor}18`, border: `1px solid ${sColor}44` }}>
+                        <Shield className="w-3.5 h-3.5" style={{ color: sColor }} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[9px] font-mono opacity-50 prithvi-text-forest">
+                            {w.officer_name} · {new Date(w.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span className="text-[8px] font-mono uppercase px-1 rounded"
+                                style={{ background: `${sColor}22`, color: sColor }}>
+                            {w.severity}
+                          </span>
+                        </div>
+                        <div className="px-3 py-2 rounded-xl rounded-tl-none text-xs font-mono prithvi-text-electric leading-relaxed"
+                             style={{ background: `${sColor}10`, border: `1px solid ${sColor}30` }}>
+                          {w.message}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Industry replies — right bubbles */}
+                    {w.replies.length === 0 ? (
+                      <p className="text-right text-[10px] font-mono opacity-30 prithvi-text-forest pr-2">
+                        No response yet
+                      </p>
+                    ) : (
+                      w.replies.map((r) => (
+                        <div key={r.id} className="flex items-start gap-2 justify-end">
+                          <div className="max-w-xs">
+                            <p className="text-right text-[9px] font-mono opacity-50 prithvi-text-forest mb-1">
+                              Industry · {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                            <div className="px-3 py-2 rounded-xl rounded-tr-none text-xs font-mono prithvi-text-electric leading-relaxed"
+                                 style={{ background: "rgba(0,200,255,0.09)", border: "1px solid rgba(0,200,255,0.25)" }}>
+                              {r.message}
+                            </div>
+                          </div>
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                               style={{ background: "rgba(0,200,255,0.12)", border: "1px solid rgba(0,200,255,0.3)" }}>
+                            <Factory className="w-3.5 h-3.5 prithvi-text-ocean" />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                );
+              })
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          <DialogFooter className="flex-shrink-0 gap-2 pt-2 border-t" style={{ borderColor: "var(--prithvi-border-dim)" }}>
+            <button
+              onClick={() => setChatTarget(null)}
+              className="px-4 py-2 rounded-lg text-xs font-mono border transition-all"
+              style={{ borderColor: "var(--prithvi-border-dim)", color: "var(--prithvi-atmospheric-teal)" }}
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                const ind = chatTarget;
+                setChatTarget(null);
+                if (ind) openWarn(ind);
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-mono font-bold border transition-all"
+              style={{ background: "rgba(255,167,38,0.12)", borderColor: "var(--prithvi-warm-amber)", color: "var(--prithvi-warm-amber)" }}
+            >
+              <AlertTriangle className="w-3 h-3" /> New Warning
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -579,17 +719,30 @@ export function IndustrialView() {
                   </td>
                   {isOfficer && (
                     <td className="py-3 pl-4">
-                      <button
-                        onClick={() => openWarn(ind)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all hover:opacity-90"
-                        style={{
-                          background: "rgba(255,167,38,0.12)",
-                          color: "var(--prithvi-warm-amber)",
-                          border: "1px solid var(--prithvi-warm-amber)",
-                        }}
-                      >
-                        <AlertTriangle className="w-3 h-3" /> Warn
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openWarn(ind)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all hover:opacity-90"
+                          style={{
+                            background: "rgba(255,167,38,0.12)",
+                            color: "var(--prithvi-warm-amber)",
+                            border: "1px solid var(--prithvi-warm-amber)",
+                          }}
+                        >
+                          <AlertTriangle className="w-3 h-3" /> Warn
+                        </button>
+                        <button
+                          onClick={() => openChat(ind)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all hover:opacity-90"
+                          style={{
+                            background: "rgba(0,200,255,0.09)",
+                            color: "var(--prithvi-electric-cyan)",
+                            border: "1px solid rgba(0,200,255,0.4)",
+                          }}
+                        >
+                          <MessageSquare className="w-3 h-3" /> Chat
+                        </button>
+                      </div>
                     </td>
                   )}
                 </motion.tr>

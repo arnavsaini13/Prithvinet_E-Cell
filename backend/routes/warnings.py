@@ -1,10 +1,11 @@
 """
 PrithviNet - Industry Warnings Routes
 
-POST /officer/warnings                      — regional officer issues a warning
-GET  /industry/warnings                     — industry user views their warnings (with replies)
-PATCH /industry/warnings/{id}/read         — mark warning as read
-POST /industry/warnings/{id}/reply         — industry user replies with their action plan
+POST /officer/warnings                          — regional officer issues a warning
+GET  /officer/industry/{industry_id}/warnings   — officer views all warnings + replies for an industry
+GET  /industry/warnings                         — industry user views their warnings (with replies)
+PATCH /industry/warnings/{id}/read             — mark warning as read
+POST /industry/warnings/{id}/reply             — industry user replies with their action plan
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -52,11 +53,35 @@ async def issue_warning(
     db.add(warning)
     await db.commit()
     await db.refresh(warning)
-    # Load replies (empty for new warning)
     result = await db.execute(
         select(IndustryWarning).where(IndustryWarning.id == warning.id).options(selectinload(IndustryWarning.replies))
     )
     return result.scalar_one()
+
+
+@router.get("/officer/industry/{industry_id}/warnings", response_model=list[IndustryWarningOut])
+async def officer_get_industry_warnings(
+    industry_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_officer),
+):
+    """Officer views all warnings (with industry replies) for a specific industry."""
+    result = await db.execute(select(Industry).where(Industry.id == industry_id))
+    industry = result.scalar_one_or_none()
+    if industry is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Industry not found")
+
+    if current_user.role == "regional_officer" and current_user.region:
+        if industry.region != current_user.region:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Industry not in your region")
+
+    result = await db.execute(
+        select(IndustryWarning)
+        .where(IndustryWarning.industry_id == industry_id)
+        .options(selectinload(IndustryWarning.replies))
+        .order_by(IndustryWarning.created_at.asc())
+    )
+    return result.scalars().all()
 
 
 @router.get("/industry/warnings", response_model=list[IndustryWarningOut])
@@ -139,7 +164,7 @@ async def reply_to_warning(
 
     reply = WarningReply(warning_id=warning_id, message=payload.message.strip())
     db.add(reply)
-    warning.is_read = True  # auto-mark as read when replying
+    warning.is_read = True
     await db.commit()
     await db.refresh(reply)
     return reply

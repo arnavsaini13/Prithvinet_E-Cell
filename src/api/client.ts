@@ -500,4 +500,8 @@ export const warningsApi = {
       method: "POST",
       body: JSON.stringify({ message }),
     }),
+
+  /** Officer fetches all warnings + replies for a specific industry */
+  industryWarnings: (industryId: number) =>
+    request<IndustryWarning[]>(`/officer/industry/${industryId}/warnings`),
 };
