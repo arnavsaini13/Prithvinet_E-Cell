@@ -8,6 +8,13 @@ import sys
 import os
 from contextlib import asynccontextmanager
 
+# Load .env for local development (GEMINI_API_KEY etc.)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+except ImportError:
+    pass
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, text, update
@@ -26,6 +33,8 @@ from routes.forecast import router as forecast_router
 from routes.industries import router as industries_router
 from routes.complaints import router as complaints_router
 from routes.community import router as community_router
+from routes.admin import router as admin_router
+from routes.regional import router as regional_router
 from services.real_data_fetcher import backfill_historical_data, run_periodic_fetcher
 from services.compliance_engine import update_all_compliance_scores, run_periodic_compliance_updater
 
@@ -183,6 +192,8 @@ app.include_router(forecast_router)
 app.include_router(industries_router)
 app.include_router(complaints_router)
 app.include_router(community_router)
+app.include_router(admin_router)
+app.include_router(regional_router)
 
 
 @app.get("/", tags=["Health"])

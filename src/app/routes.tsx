@@ -9,6 +9,8 @@ import { PollutionTimeMachine } from "./components/PollutionTimeMachine";
 import { DataArchive } from "./components/DataArchive";
 import { IndustrialView } from "./components/IndustrialView";
 import { CitizenPortal } from "./components/CitizenPortal";
+import { AdminApprovals } from "./components/AdminApprovals";
+import { RoleAwareDashboard } from "./components/RoleAwareDashboard";
 import { Root } from "./components/Root";
 import { Login } from "./components/Login";
 import { Register } from "./components/Register";
@@ -46,7 +48,7 @@ export const router = createBrowserRouter([
     path: "/dashboard",
     element: <Protected><Root /></Protected>,
     children: [
-      { index: true, Component: GlobalMonitor },
+      { index: true, Component: RoleAwareDashboard },
       { path: "atmosphere", Component: AtmosphereView },
       { path: "ocean", Component: OceanView },
       { path: "biodiversity", Component: BiodiversityView },
@@ -55,6 +57,7 @@ export const router = createBrowserRouter([
       { path: "time-machine", Component: PollutionTimeMachine },
       { path: "data-archive", Component: DataArchive },
       { path: "industries", Component: IndustrialView },
+      { path: "approvals", Component: AdminApprovals },
       // Legacy citizen path — redirect to the new portal
       { path: "citizen", element: <Navigate to="/citizen-portal" replace /> },
     ],

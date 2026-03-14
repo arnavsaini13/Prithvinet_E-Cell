@@ -46,6 +46,7 @@ async def register(
 
     if user_count == 0:
         assigned_role = "admin"
+        approved = True
     else:
         # Only admins can create other admins
         if payload.role.value == "admin":
@@ -54,6 +55,8 @@ async def register(
                 detail="Only admins can assign the admin role.",
             )
         assigned_role = payload.role.value
+        # Regional officers require admin approval; all others auto-approved
+        approved = assigned_role != "regional_officer"
 
     user = User(
         name=payload.name,
@@ -61,6 +64,7 @@ async def register(
         password_hash=hash_password(payload.password),
         role=assigned_role,
         region=payload.region,
+        is_approved=approved,
     )
     db.add(user)
     await db.commit()
@@ -85,6 +89,12 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
+        )
+
+    if not user.is_approved:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="pending_approval",
         )
 
     token = create_access_token(data={"sub": user.email, "role": user.role})

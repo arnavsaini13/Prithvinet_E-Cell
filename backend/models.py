@@ -5,7 +5,7 @@ industries, and alerts.
 """
 
 from datetime import datetime
-from sqlalchemy import Integer, String, Float, DateTime, ForeignKey, func, Text
+from sqlalchemy import Integer, String, Float, DateTime, ForeignKey, func, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 
@@ -23,6 +23,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(300), nullable=False)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="citizen")
     region: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
 
@@ -105,6 +106,7 @@ class Complaint(Base):
     photo_data: Mapped[str | None] = mapped_column(Text, nullable=True)   # base64-encoded image
     photo_filename: Mapped[str | None] = mapped_column(String(300), nullable=True)
     location: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(100), nullable=True)   # maps to monitoring station region
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")  # pending, under_review, resolved
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 

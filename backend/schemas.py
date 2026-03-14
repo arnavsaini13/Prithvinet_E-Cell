@@ -44,6 +44,17 @@ class UserOut(BaseModel):
     email: str
     role: str
     region: str | None
+    is_approved: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class PendingUserOut(BaseModel):
+    id: int
+    name: str
+    email: str
+    region: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -198,6 +209,7 @@ class ComplaintOut(BaseModel):
     photo_data: str | None
     photo_filename: str | None
     location: str | None
+    region: str | None
     status: str
     created_at: datetime
 

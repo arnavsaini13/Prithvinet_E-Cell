@@ -24,6 +24,7 @@ async function request<T>(
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail ?? `API error ${res.status}`);
   }
+  if (res.status === 204) return undefined as T;
   return res.json();
 }
 
@@ -60,6 +61,7 @@ export interface UserOut {
   email: string;
   role: string;
   region: string | null;
+  is_approved: boolean;
   created_at: string;
 }
 
@@ -351,6 +353,7 @@ export interface Complaint {
   photo_data: string | null;
   photo_filename: string | null;
   location: string | null;
+  region: string | null;
   status: string;
   created_at: string;
 }
@@ -358,6 +361,11 @@ export interface Complaint {
 export const complaintsApi = {
   submit: (data: FormData) => requestForm<Complaint>("/complaints", data),
   list: () => request<Complaint[]>("/complaints"),
+  updateStatus: (id: number, status: string) => {
+    const form = new FormData();
+    form.append("status", status);
+    return requestForm<Complaint>(`/complaints/${id}/status`, form);
+  },
 };
 
 // ── Community ─────────────────────────────────────
@@ -407,4 +415,34 @@ export const communityApi = {
     return requestForm<CommunityComment>(`/community/posts/${postId}/comments`, fd);
   },
   leaderboard: () => request<LeaderboardEntry[]>("/community/leaderboard"),
+};
+
+// ── Admin ──────────────────────────────────────────
+
+export interface PendingUser {
+  id: number;
+  name: string;
+  email: string;
+  region: string | null;
+  created_at: string;
+}
+
+export const adminApi = {
+  pendingUsers: () => request<PendingUser[]>("/admin/pending-users"),
+  approve: (id: number) => request<void>(`/admin/users/${id}/approve`, { method: "POST" }),
+  reject:  (id: number) => request<void>(`/admin/users/${id}/reject`,  { method: "POST" }),
+};
+
+// ── Regional AI ────────────────────────────────────
+
+export interface AIAlert {
+  title: string;
+  description: string;
+  severity: "low" | "medium" | "high" | "critical";
+  category: "air_quality" | "water_quality" | "noise" | "industrial" | "general";
+  recommendation: string;
+}
+
+export const regionalApi = {
+  aiAlerts: () => request<AIAlert[]>("/regional/ai-alerts"),
 };

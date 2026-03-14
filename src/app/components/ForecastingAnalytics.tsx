@@ -45,6 +45,7 @@ import {
 import { forecastApi, stationsApi, pollutionApi, riskApi, alertsApi } from "../../api/client";
 import type { ForecastOut, Station, PollutionReading, RiskScore, Alert } from "../../api/client";
 import { StationSelector } from "./StationSelector";
+import { useAuth } from "../context/AuthContext";
 
 // Radar chart data for comprehensive environmental assessment
 // Radar chart data: will be replaced by live risk scores in state
@@ -162,6 +163,7 @@ function computeInsights(
 }
 
 export function ForecastingAnalytics() {
+  const { user, role } = useAuth();
   const [selectedMetric, setSelectedMetric] = useState<"pm25" | "pm10" | "aqi">("aqi");
   const [timeRange, setTimeRange] = useState<"7d" | "14d" | "30d">("14d");
   const [chartFilter, setChartFilter] = useState<{ historical: boolean; current: boolean; predicted: boolean }>({
@@ -191,14 +193,21 @@ export function ForecastingAnalytics() {
 
     async function fetchData() {
       try {
-        const stationsList = await stationsApi.list();
+        const isOfficer = role === "regional_officer" && !!user?.region;
+        const stationsList = await stationsApi.list(isOfficer ? user!.region! : undefined);
         if (cancelled) return;
         setStations(stationsList);
 
         if (stationsList.length === 0) return;
 
+        // Officers are pinned to their one station
+        const effectiveId = isOfficer
+          ? stationsList[0].id
+          : (selectedStation ?? stationsList[0].id);
+        if (isOfficer) setSelectedStation(stationsList[0].id);
+
         // Fetch historical readings for the chart
-        const readings = await pollutionApi.list(selectedStation ?? undefined, 200);
+        const readings = await pollutionApi.list(effectiveId, 200);
         if (cancelled) return;
 
         // Build historical chart data from recent readings
@@ -219,7 +228,7 @@ export function ForecastingAnalytics() {
 
         // Fetch forecast for selected station — all pollutants from real Open-Meteo CAMS
         // SOURCE: air-quality-api.open-meteo.com (ECMWF) via /forecast backend endpoint
-        const stationId = selectedStation ?? stationsList[0].id;
+        const stationId = effectiveId;
         const [pm25Forecast, pm10Forecast, no2Forecast, so2Forecast, ozoneForecast] = await Promise.all([
           forecastApi.get(stationId, "pm25",  12).catch(() => null),
           forecastApi.get(stationId, "pm10",  12).catch(() => null),

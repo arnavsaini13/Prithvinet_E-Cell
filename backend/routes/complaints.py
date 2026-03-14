@@ -24,6 +24,7 @@ async def submit_complaint(
     title: str = Form(...),
     description: str = Form(...),
     location: str | None = Form(default=None),
+    region: str | None = Form(default=None),
     photo: UploadFile | None = File(default=None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_citizen),
@@ -56,6 +57,7 @@ async def submit_complaint(
         title=title,
         description=description,
         location=location,
+        region=region,
         photo_data=photo_data,
         photo_filename=photo_filename,
     )
@@ -80,6 +82,13 @@ async def list_complaints(
             .where(Complaint.user_id == current_user.id)
             .order_by(Complaint.created_at.desc())
         )
+    elif current_user.role == "regional_officer" and current_user.region:
+        # Officers only see complaints filed for their region
+        stmt = (
+            select(Complaint)
+            .where(Complaint.region == current_user.region)
+            .order_by(Complaint.created_at.desc())
+        )
     else:
         stmt = select(Complaint).order_by(Complaint.created_at.desc())
 
@@ -87,7 +96,7 @@ async def list_complaints(
     return result.scalars().all()
 
 
-@router.patch("/complaints/{complaint_id}/status", response_model=ComplaintOut)
+@router.post("/complaints/{complaint_id}/status", response_model=ComplaintOut)
 async def update_complaint_status(
     complaint_id: int,
     status: str = Form(...),

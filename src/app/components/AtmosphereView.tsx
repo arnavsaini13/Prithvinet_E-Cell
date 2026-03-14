@@ -9,8 +9,10 @@ import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Responsi
 import { pollutionApi, stationsApi, alertsApi, openMeteoApi } from "../../api/client";
 import type { PollutionReading, Station, Alert } from "../../api/client";
 import { StationSelector } from "./StationSelector";
+import { useAuth } from "../context/AuthContext";
 
 export function AtmosphereView() {
+  const { user, role } = useAuth();
   const [stations, setStations] = useState<Station[]>([]);
   const [readings, setReadings] = useState<PollutionReading[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -24,10 +26,19 @@ export function AtmosphereView() {
 
     async function fetchData() {
       try {
-        const [stList, rdList, alList] = await Promise.all([
-          stationsApi.list(),
-          pollutionApi.list(selectedStation ?? undefined, 100),
-          alertsApi.list(selectedStation ?? undefined, undefined, 10).catch(() => [] as Alert[]),
+        const isOfficer = role === "regional_officer" && !!user?.region;
+        const stList = await stationsApi.list(isOfficer ? user!.region! : undefined);
+        if (cancelled) return;
+
+        // Officers are pinned to their one station; others use the picker selection
+        const effectiveId: number | undefined = isOfficer && stList.length > 0
+          ? stList[0].id
+          : (selectedStation ?? undefined);
+        if (isOfficer && stList.length > 0) setSelectedStation(stList[0].id);
+
+        const [rdList, alList] = await Promise.all([
+          pollutionApi.list(effectiveId, 100),
+          alertsApi.list(effectiveId, undefined, 10).catch(() => [] as Alert[]),
         ]);
         if (cancelled) return;
         setStations(stList);
@@ -37,8 +48,8 @@ export function AtmosphereView() {
 
         // Fetch extended pollutants (SO2, ozone, methane, dust, AQI) from Open-Meteo
         // SOURCE: air-quality-api.open-meteo.com — free, no API key, ECMWF CAMS model
-        const targetStation = selectedStation != null
-          ? stList.find(s => s.id === selectedStation) ?? stList[0]
+        const targetStation = effectiveId != null
+          ? stList.find(s => s.id === effectiveId) ?? stList[0]
           : stList[0];
         if (targetStation) {
           try {

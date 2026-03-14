@@ -108,6 +108,7 @@ function ReportsTab({ userId }: { userId: number | undefined }) {
   const [category, setCategory]         = useState(CATEGORIES[0].label);
   const [description, setDescription]   = useState("");
   const [location, setLocation]         = useState("");
+  const [region, setRegion]             = useState("");
   const [photo, setPhoto]               = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting]     = useState(false);
@@ -156,11 +157,12 @@ function ReportsTab({ userId }: { userId: number | undefined }) {
     fd.append("title", category);
     fd.append("description", description.trim());
     if (location.trim()) fd.append("location", location.trim());
+    if (region) fd.append("region", region);
     if (photo) fd.append("photo", photo);
     try {
       await complaintsApi.submit(fd);
       setSuccess(true);
-      setDescription(""); setLocation(""); removePhoto();
+      setDescription(""); setLocation(""); setRegion(""); removePhoto();
       setCategory(CATEGORIES[0].label);
       setShowForm(false);
       loadReports();
@@ -347,6 +349,29 @@ function ReportsTab({ userId }: { userId: number | undefined }) {
                     onFocus={e => (e.target.style.borderColor = C.accent)}
                     onBlur={e  => (e.target.style.borderColor = C.border)}
                   />
+                </div>
+
+                {/* Region — routes the complaint to the right officer */}
+                <div>
+                  <label className="block text-sm font-semibold mb-1.5" style={{ color: C.textMain }}>
+                    Affected Region
+                    <span className="ml-2 text-xs font-normal" style={{ color: C.textMuted }}>(select so the right officer is notified)</span>
+                  </label>
+                  <select
+                    value={region} onChange={e => setRegion(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+                    style={{ background: C.pageBg, border: `1px solid ${C.border}`, color: region ? C.textMain : C.textMuted }}
+                    onFocus={e => (e.target.style.borderColor = C.accent)}
+                    onBlur={e  => (e.target.style.borderColor = C.border)}
+                  >
+                    <option value="">— Select region (optional) —</option>
+                    <option value="Delhi">Delhi Central Station</option>
+                    <option value="Mumbai">Mumbai Coastal Station</option>
+                    <option value="Bangalore">Bangalore Tech Park</option>
+                    <option value="Chennai">Chennai Industrial Zone</option>
+                    <option value="Kolkata">Kolkata River Station</option>
+                    <option value="Raipur">Raipur Industrial Station</option>
+                  </select>
                 </div>
 
                 {/* Error */}

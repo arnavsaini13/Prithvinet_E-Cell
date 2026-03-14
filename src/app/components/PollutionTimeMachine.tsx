@@ -33,6 +33,7 @@ import {
 import { WorldMapSVG } from "./WorldMapSVG";
 import { stationsApi, pollutionApi, forecastApi } from "../../api/client";
 import type { Station, PollutionReading, ForecastOut } from "../../api/client";
+import { useAuth } from "../context/AuthContext";
 
 interface TimelinePoint {
   date: Date;
@@ -56,6 +57,7 @@ interface MapStation {
 }
 
 export function PollutionTimeMachine() {
+  const { user, role } = useAuth();
   const [timelineData, setTimelineData] = useState<TimelinePoint[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -73,16 +75,21 @@ export function PollutionTimeMachine() {
     let cancelled = false;
     async function fetchData() {
       try {
+        const isOfficer = role === "regional_officer" && !!user?.region;
         const [stList, rdList] = await Promise.all([
-          stationsApi.list(),
+          stationsApi.list(isOfficer ? user!.region! : undefined),
           pollutionApi.list(undefined, 500),
         ]);
         if (cancelled) return;
         setStations(stList);
 
+        // For officers, scope readings to their station only
+        const officerIds = new Set(stList.map((s: Station) => s.id));
+        const filteredRd = isOfficer ? rdList.filter((r: PollutionReading) => officerIds.has(r.station_id)) : rdList;
+
         // Build per-station day AQI map for realistic map rendering
         const byStationDay = new Map<number, Map<string, PollutionReading[]>>();
-        for (const r of rdList) {
+        for (const r of filteredRd) {
           if (!byStationDay.has(r.station_id)) byStationDay.set(r.station_id, new Map());
           const dayMap = byStationDay.get(r.station_id)!;
           const day = new Date(r.timestamp).toISOString().slice(0, 10);
@@ -103,7 +110,7 @@ export function PollutionTimeMachine() {
 
         // Build timeline from real readings (grouped by day)
         const byDay = new Map<string, PollutionReading[]>();
-        for (const r of rdList) {
+        for (const r of filteredRd) {
           const day = new Date(r.timestamp).toISOString().slice(0, 10);
           if (!byDay.has(day)) byDay.set(day, []);
           byDay.get(day)!.push(r);

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { stationsApi, pollutionApi, alertsApi } from "../../api/client";
 import type { Station, PollutionReading, Alert } from "../../api/client";
+import { useAuth } from "../context/AuthContext";
 
 interface ArchiveEntry {
   id: string;
@@ -38,6 +39,7 @@ interface ActivityEntry {
 
 export function DataArchive() {
   const navigate = useNavigate();
+  const { user, role } = useAuth();
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -53,21 +55,27 @@ export function DataArchive() {
 
     async function fetchData() {
       try {
+        const isOfficer = role === "regional_officer" && !!user?.region;
         const [stations, readings, alerts] = await Promise.all([
-          stationsApi.list(),
+          stationsApi.list(isOfficer ? user!.region! : undefined),
           pollutionApi.list(undefined, 200),
           alertsApi.list(undefined, undefined, 50).catch(() => [] as Alert[]),
         ]);
         if (cancelled) return;
 
+        // Scope readings and alerts to officer's station if applicable
+        const stationSet = new Set(stations.map((s: Station) => s.id));
+        const filteredReadings = isOfficer ? readings.filter((r: PollutionReading) => stationSet.has(r.station_id)) : readings;
+        const filteredAlerts = isOfficer ? alerts.filter((a: Alert) => stationSet.has(a.station_id)) : alerts;
+
         setStationCount(stations.length);
-        setTotalRecords(readings.length);
-        setAlertCount(alerts.length);
-        setRawReadings(readings);
+        setTotalRecords(filteredReadings.length);
+        setAlertCount(filteredAlerts.length);
+        setRawReadings(filteredReadings);
 
         // Group readings by station to build per-station archive entries
         const byStation = new Map<number, PollutionReading[]>();
-        for (const r of readings) {
+        for (const r of filteredReadings) {
           const arr = byStation.get(r.station_id) ?? [];
           arr.push(r);
           byStation.set(r.station_id, arr);
@@ -96,7 +104,7 @@ export function DataArchive() {
         }
 
         // Water quality aggregate
-        const waterReadings = readings.filter(r => r.ph > 0 || r.dissolved_oxygen > 0);
+        const waterReadings = filteredReadings.filter(r => r.ph > 0 || r.dissolved_oxygen > 0);
         if (waterReadings.length > 0) {
           const latestW = waterReadings.reduce((a, b) =>
             new Date(a.timestamp) > new Date(b.timestamp) ? a : b
@@ -114,24 +122,24 @@ export function DataArchive() {
         }
 
         // Alerts dataset
-        if (alerts.length > 0) {
-          const latestA = alerts.reduce((a, b) =>
+        if (filteredAlerts.length > 0) {
+          const latestA = filteredAlerts.reduce((a, b) =>
             new Date(a.timestamp) > new Date(b.timestamp) ? a : b
           );
           entries.push({
             id: "alerts-all",
             name: "Environmental Alerts Archive",
             type: "Alerts",
-            size: (alerts.length * 0.05).toFixed(0) + " KB",
+            size: (filteredAlerts.length * 0.05).toFixed(0) + " KB",
             date: new Date(latestA.timestamp).toISOString().split("T")[0],
-            records: alerts.length.toLocaleString(),
+            records: filteredAlerts.length.toLocaleString(),
             format: "JSON",
             status: "complete",
           });
         }
 
         // Noise dataset
-        const noiseReadings = readings.filter(r => r.noise_level > 0);
+        const noiseReadings = filteredReadings.filter(r => r.noise_level > 0);
         if (noiseReadings.length > 0) {
           const latestN = noiseReadings.reduce((a, b) =>
             new Date(a.timestamp) > new Date(b.timestamp) ? a : b
@@ -153,8 +161,8 @@ export function DataArchive() {
         // Build real activity from latest readings and alerts
         const activities: ActivityEntry[] = [];
 
-        if (readings.length > 0) {
-          const newest = readings.reduce((a, b) =>
+        if (filteredReadings.length > 0) {
+          const newest = filteredReadings.reduce((a, b) =>
             new Date(a.timestamp) > new Date(b.timestamp) ? a : b
           );
           const st = stations.find(s => s.id === newest.station_id);
@@ -166,8 +174,8 @@ export function DataArchive() {
           });
         }
 
-        if (alerts.length > 0) {
-          const newest = alerts.reduce((a, b) =>
+        if (filteredAlerts.length > 0) {
+          const newest = filteredAlerts.reduce((a, b) =>
             new Date(a.timestamp) > new Date(b.timestamp) ? a : b
           );
           activities.push({
@@ -179,7 +187,7 @@ export function DataArchive() {
 
         activities.push({
           action: "Data sync completed",
-          dataset: `${readings.length} readings across ${stations.length} stations`,
+          dataset: `${filteredReadings.length} readings across ${stations.length} station${stations.length !== 1 ? "s" : ""}`,
           time: "Just now",
         });
 

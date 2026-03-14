@@ -19,6 +19,7 @@ export function Login() {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isPending, setIsPending] = useState(false);
   const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -32,7 +33,13 @@ export function Login() {
       const role = localStorage.getItem("prithvinet_role");
       navigate(role === "citizen" ? "/citizen-portal" : "/dashboard");
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      if (err.message === "pending_approval") {
+        setIsPending(true);
+        setError('');
+      } else {
+        setIsPending(false);
+        setError(err.message || 'Authentication failed');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -208,6 +215,14 @@ export function Login() {
                   Forgot password?
                 </Link>
               </div>
+
+              {/* Pending approval notice */}
+              {isPending && (
+                <div className="p-3 rounded-lg border text-xs font-mono text-center"
+                     style={{ background: 'rgba(245,124,0,0.1)', borderColor: '#f57c00', color: '#ffb74d' }}>
+                  ⏳ Your account is pending admin approval. You'll be able to log in once approved.
+                </div>
+              )}
 
               {/* Error message */}
               {error && (

@@ -1,9 +1,9 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Satellite, Wind, Waves, Leaf, Globe, Activity, Droplets, Volume2, AlertTriangle, Settings, Bell, User, Database, Map, TrendingUp, Clock, LogOut, Search, X, Factory, Flag } from "lucide-react";
+import { Satellite, Wind, Waves, Leaf, Globe, Activity, Droplets, Volume2, AlertTriangle, Settings, Bell, User, Database, Map, TrendingUp, Clock, LogOut, Search, X, Factory, Flag, UserCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect, useRef } from "react";
 import "../../styles/prithvi-theme.css";
-import { riskApi, alertsApi, type RiskScore, type Alert } from "../../api/client";
+import { riskApi, alertsApi, adminApi, type RiskScore, type Alert } from "../../api/client";
 import { useAuth } from "../context/AuthContext";
 
 export function Root() {
@@ -27,6 +27,14 @@ export function Root() {
   const [darkMode, setDarkMode] = useState(true);
   const [showAnimations, setShowAnimations] = useState(true);
   const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
+
+  // Pending approvals count for admin badge
+  const [pendingCount, setPendingCount] = useState(0);
+  useEffect(() => {
+    if (user?.role === "admin") {
+      adminApi.pendingUsers().then(list => setPendingCount(list.length)).catch(() => {});
+    }
+  }, [user?.role]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -59,6 +67,7 @@ export function Root() {
     { path: "/dashboard/industries", label: "Industries", icon: Factory, keywords: ["industry", "compliance", "factory", "pollution", "cpcb", "emissions"], roles: undefined },
     { path: "/dashboard/data-archive", label: "Data Archive", icon: Database, keywords: ["data", "archive", "export", "dataset"], roles: undefined },
     { path: "/dashboard/citizen", label: "Report Issue", icon: Flag, keywords: ["report", "complaint", "citizen", "violation", "tree", "dumping"], roles: ["citizen"] },
+    { path: "/dashboard/approvals", label: "Approvals", icon: UserCheck, keywords: ["approvals", "pending", "officers", "admin", "registration"], roles: ["admin"] },
   ];
 
   // Filter nav items for search
@@ -688,9 +697,17 @@ export function Root() {
                     }}
                     title={item.label}
                   >
-                    <Icon className="w-6 h-6 mx-auto" style={{ 
-                      color: isActive ? 'var(--prithvi-electric-cyan)' : 'var(--prithvi-atmospheric-teal)' 
-                    }} />
+                    <div className="relative">
+                      <Icon className="w-6 h-6 mx-auto" style={{
+                        color: isActive ? 'var(--prithvi-electric-cyan)' : 'var(--prithvi-atmospheric-teal)'
+                      }} />
+                      {item.path === "/dashboard/approvals" && pendingCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center"
+                              style={{ background: 'var(--prithvi-critical-red)', color: '#fff' }}>
+                          {pendingCount > 9 ? "9+" : pendingCount}
+                        </span>
+                      )}
+                    </div>
                     
                     {isActive && (
                       <motion.div

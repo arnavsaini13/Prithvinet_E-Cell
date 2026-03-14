@@ -7,9 +7,11 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 import { pollutionApi, stationsApi, alertsApi, openMeteoApi } from "../../api/client";
 import type { PollutionReading, Station, Alert } from "../../api/client";
 import { StationSelector } from "./StationSelector";
+import { useAuth } from "../context/AuthContext";
 
 export function OceanView() {
   const navigate = useNavigate();
+  const { user, role } = useAuth();
   const [stations, setStations] = useState<Station[]>([]);
   const [readings, setReadings] = useState<PollutionReading[]>([]);
   const [latestAlert, setLatestAlert] = useState<Alert | null>(null);
@@ -22,10 +24,18 @@ export function OceanView() {
 
     async function fetchData() {
       try {
-        const [stList, rdList, alList] = await Promise.all([
-          stationsApi.list(),
-          pollutionApi.list(selectedStation ?? undefined, 100),
-          alertsApi.list(selectedStation ?? undefined, undefined, 5).catch(() => [] as Alert[]),
+        const isOfficer = role === "regional_officer" && !!user?.region;
+        const stList = await stationsApi.list(isOfficer ? user!.region! : undefined);
+        if (cancelled) return;
+
+        const effectiveId: number | undefined = isOfficer && stList.length > 0
+          ? stList[0].id
+          : (selectedStation ?? undefined);
+        if (isOfficer && stList.length > 0) setSelectedStation(stList[0].id);
+
+        const [rdList, alList] = await Promise.all([
+          pollutionApi.list(effectiveId, 100),
+          alertsApi.list(effectiveId, undefined, 5).catch(() => [] as Alert[]),
         ]);
         if (cancelled) return;
         setStations(stList);
@@ -37,7 +47,7 @@ export function OceanView() {
         setLatestAlert(waterAlert ?? (alList.length > 0 ? alList[0] : null));
 
         // Fetch real marine data — use selected station coords if coastal
-        const sel = selectedStation != null ? stList.find((s: Station) => s.id === selectedStation) : null;
+        const sel = stList.find((s: Station) => s.id === effectiveId) ?? stList[0];
         const lat = sel?.latitude ?? 19.076;
         const lng = sel?.longitude ?? 72.878;
         openMeteoApi.marine(lat, lng).then(({ current }) => {

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { MapPin, X, TrendingUp, TrendingDown, Minus, Radio, Search, Filter, Clock, ZoomIn, ZoomOut, RotateCcw, AlertCircle } from "lucide-react";
 import { WorldMapSVG } from "./WorldMapSVG";
 import { stationsApi, pollutionApi, type Station, type PollutionReading } from "../../api/client";
+import { useAuth } from "../context/AuthContext";
 
 interface MonitoringStation {
   id: string;
@@ -25,6 +26,7 @@ function deriveStatus(pm25: number): "safe" | "moderate" | "critical" {
 }
 
 export function PollutionMap() {
+  const { user, role } = useAuth();
   const [monitoringStations, setMonitoringStations] = useState<MonitoringStation[]>([]);
   const [selectedStation, setSelectedStation] = useState<MonitoringStation | null>(null);
   const [hoveredStation, setHoveredStation] = useState<string | null>(null);
@@ -42,8 +44,9 @@ export function PollutionMap() {
   useEffect(() => {
     const fetchStations = async () => {
       try {
+        const isOfficer = role === "regional_officer" && !!user?.region;
         const [stations, readings] = await Promise.all([
-          stationsApi.list(),
+          stationsApi.list(isOfficer ? user!.region! : undefined),
           pollutionApi.list(undefined, readingsLimit),
         ]);
 
