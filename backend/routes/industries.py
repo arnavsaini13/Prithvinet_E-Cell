@@ -14,7 +14,7 @@ from database import get_db
 from models import Industry
 from schemas import IndustryOut, EnrichedIndustryOut
 from dependencies import require_industry, require_citizen
-from services.compliance_engine import INDUSTRY_COORDS, fetch_compliance_for_industry
+from services.compliance_engine import fetch_compliance_for_industry
 
 router = APIRouter(tags=["Industries"])
 
@@ -60,10 +60,9 @@ async def list_industries_enriched(
     industries = result.scalars().all()
 
     async def enrich(ind: Industry) -> dict | None:
-        coords = INDUSTRY_COORDS.get(ind.name)
-        if not coords:
+        lat, lng = ind.latitude, ind.longitude
+        if lat == 0.0 and lng == 0.0:
             return None
-        lat, lng = coords
         data = await fetch_compliance_for_industry(ind.name, lat, lng)
         if not data:
             # Fallback: return stored score with zeros for live metrics

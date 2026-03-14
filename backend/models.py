@@ -79,6 +79,8 @@ class Industry(Base):
     location: Mapped[str] = mapped_column(String(300), nullable=False)
     compliance_score: Mapped[float] = mapped_column(Float, nullable=False, default=100.0)
     region: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    latitude: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
 
 class Alert(Base):

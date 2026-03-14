@@ -12,9 +12,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models import User
+from models import User, Industry
 from schemas import PendingUserOut
 from dependencies import get_current_user
+from services.compliance_engine import INDUSTRY_COORDS, REGION_COORDS
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -43,12 +44,35 @@ async def approve_user(
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(_require_admin),
 ):
-    """Approve a pending regional officer — allows them to log in."""
+    """Approve a pending user — allows them to log in.
+    For industry_user accounts, also creates an Industry record so their
+    facility appears in regional officers' IndustrialView.
+    """
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.is_approved = True
+
+    # If this is an industry user, register their facility in the industries table
+    if user.role == "industry_user" and user.industry_name:
+        existing = await db.execute(
+            select(Industry).where(Industry.name == user.industry_name)
+        )
+        if existing.scalar_one_or_none() is None:
+            # Use known coords if available, fall back to region center
+            coords = INDUSTRY_COORDS.get(user.industry_name) or REGION_COORDS.get(user.region or "", (21.0, 78.0))
+            lat, lng = coords
+            industry = Industry(
+                name=user.industry_name,
+                location=user.industry_location or "",
+                region=user.region or "",
+                compliance_score=75.0,
+                latitude=lat,
+                longitude=lng,
+            )
+            db.add(industry)
+
     await db.commit()
 
 

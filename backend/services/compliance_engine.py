@@ -36,6 +36,16 @@ INDUSTRY_COORDS: dict[str, tuple[float, float]] = {
     "Bhilai Steel Plant":      (21.2091, 81.4277),   # Bhilai, Chhattisgarh (Raipur region)
 }
 
+# ── Region center coordinates — fallback for user-registered industries ─────
+REGION_COORDS: dict[str, tuple[float, float]] = {
+    "Delhi":     (28.6139, 77.2090),
+    "Mumbai":    (19.0760, 72.8777),
+    "Bangalore": (12.9716, 77.5946),
+    "Chennai":   (13.0827, 80.2707),
+    "Kolkata":   (22.5726, 88.3639),
+    "Raipur":    (21.2514, 81.6296),
+}
+
 
 def _compute_score(pm25: float, pm10: float, so2: float, no2: float, eaqi: float) -> float:
     """
@@ -141,30 +151,28 @@ async def fetch_compliance_for_industry(
 
 async def update_all_compliance_scores(db: AsyncSession) -> None:
     """
-    Update compliance_score for every industry whose coordinates are known.
+    Update compliance_score for every industry that has valid coordinates.
     Called on startup and every 30 minutes.
     """
     from models import Industry  # local import to avoid circular
     result = await db.execute(select(Industry))
     industries = result.scalars().all()
 
-    tasks = []
+    updated = 0
     for ind in industries:
-        coords = INDUSTRY_COORDS.get(ind.name)
-        if coords:
-            tasks.append((ind, coords))
-
-    for ind, (lat, lng) in tasks:
-        data = await fetch_compliance_for_industry(ind.name, lat, lng)
+        if ind.latitude == 0.0 and ind.longitude == 0.0:
+            continue
+        data = await fetch_compliance_for_industry(ind.name, ind.latitude, ind.longitude)
         if data:
             ind.compliance_score = data["compliance_score"]
             logger.info(
                 "Compliance updated: %s → %.1f (PM2.5=%.1f SO2=%.1f)",
                 ind.name, data["compliance_score"], data["pm25"], data["so2"],
             )
+            updated += 1
 
     await db.commit()
-    logger.info("compliance_engine: updated %d industries.", len(tasks))
+    logger.info("compliance_engine: updated %d industries.", updated)
 
 
 async def run_periodic_compliance_updater(interval_seconds: int = 1800) -> None:
