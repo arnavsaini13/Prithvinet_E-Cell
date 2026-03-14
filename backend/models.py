@@ -5,7 +5,7 @@ industries, and alerts.
 """
 
 from datetime import datetime
-from sqlalchemy import Integer, String, Float, DateTime, ForeignKey, func
+from sqlalchemy import Integer, String, Float, DateTime, ForeignKey, func, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 
@@ -88,3 +88,62 @@ class Alert(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
     station: Mapped["MonitoringStation"] = relationship(back_populates="alerts")
+
+
+# ──────────────────────────────────────────────
+# Citizen Complaints
+# ──────────────────────────────────────────────
+
+class Complaint(Base):
+    __tablename__ = "complaints"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    description: Mapped[str] = mapped_column(String(2000), nullable=False)
+    photo_data: Mapped[str | None] = mapped_column(Text, nullable=True)   # base64-encoded image
+    photo_filename: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")  # pending, under_review, resolved
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+
+# ──────────────────────────────────────────────
+# Community — Posts, Likes, Comments
+# ──────────────────────────────────────────────
+
+class CommunityPost(Base):
+    __tablename__ = "community_posts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    content: Mapped[str] = mapped_column(String(2000), nullable=False)
+    photo_data: Mapped[str | None] = mapped_column(Text, nullable=True)   # base64-encoded
+    photo_filename: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+    likes: Mapped[list["PostLike"]] = relationship(back_populates="post", cascade="all, delete-orphan")
+    comments: Mapped[list["PostComment"]] = relationship(back_populates="post", cascade="all, delete-orphan")
+
+
+class PostLike(Base):
+    __tablename__ = "post_likes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    post_id: Mapped[int] = mapped_column(Integer, ForeignKey("community_posts.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+    post: Mapped["CommunityPost"] = relationship(back_populates="likes")
+
+
+class PostComment(Base):
+    __tablename__ = "post_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    post_id: Mapped[int] = mapped_column(Integer, ForeignKey("community_posts.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    content: Mapped[str] = mapped_column(String(1000), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+    post: Mapped["CommunityPost"] = relationship(back_populates="comments")

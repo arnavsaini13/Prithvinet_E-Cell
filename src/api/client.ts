@@ -27,6 +27,25 @@ async function request<T>(
   return res.json();
 }
 
+/** For multipart/form-data uploads — browser sets Content-Type with boundary automatically */
+async function requestForm<T>(path: string, body: FormData): Promise<T> {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers,
+    body,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? `API error ${res.status}`);
+  }
+  return res.json();
+}
+
 // ── Auth ──────────────────────────────────────────
 
 export interface TokenOut {
@@ -318,4 +337,72 @@ export const openMeteoApi = {
     if (!res.ok) throw new Error("Open-Meteo air quality fetch failed");
     return res.json();
   },
+};
+
+// ── Citizen Complaints ─────────────────────────────
+
+export interface Complaint {
+  id: number;
+  user_id: number;
+  title: string;
+  description: string;
+  photo_data: string | null;
+  photo_filename: string | null;
+  location: string | null;
+  status: string;
+  created_at: string;
+}
+
+export const complaintsApi = {
+  submit: (data: FormData) => requestForm<Complaint>("/complaints", data),
+  list: () => request<Complaint[]>("/complaints"),
+};
+
+// ── Community ─────────────────────────────────────
+
+export interface CommunityPost {
+  id: number;
+  user_id: number;
+  author_name: string;
+  content: string;
+  photo_data: string | null;
+  photo_filename: string | null;
+  likes_count: number;
+  comments_count: number;
+  liked_by_me: boolean;
+  created_at: string;
+}
+
+export interface CommunityComment {
+  id: number;
+  post_id: number;
+  user_id: number;
+  author_name: string;
+  content: string;
+  created_at: string;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  user_id: number;
+  name: string;
+  posts_count: number;
+  total_likes: number;
+  total_comments: number;
+  score: number;
+}
+
+export const communityApi = {
+  createPost: (data: FormData) => requestForm<CommunityPost>("/community/posts", data),
+  listPosts: (limit = 50) => request<CommunityPost[]>(`/community/posts?limit=${limit}`),
+  toggleLike: (postId: number) =>
+    request<CommunityPost>(`/community/posts/${postId}/like`, { method: "POST" }),
+  getComments: (postId: number) =>
+    request<CommunityComment[]>(`/community/posts/${postId}/comments`),
+  addComment: (postId: number, content: string) => {
+    const fd = new FormData();
+    fd.append("content", content);
+    return requestForm<CommunityComment>(`/community/posts/${postId}/comments`, fd);
+  },
+  leaderboard: () => request<LeaderboardEntry[]>("/community/leaderboard"),
 };

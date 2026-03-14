@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Satellite, Wind, Waves, Leaf, Globe, Activity, Droplets, Volume2, AlertTriangle, Settings, Bell, User, Database, Map, TrendingUp, Clock, LogOut, Search, X, Factory } from "lucide-react";
+import { Satellite, Wind, Waves, Leaf, Globe, Activity, Droplets, Volume2, AlertTriangle, Settings, Bell, User, Database, Map, TrendingUp, Clock, LogOut, Search, X, Factory, Flag } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect, useRef } from "react";
 import "../../styles/prithvi-theme.css";
@@ -48,15 +48,16 @@ export function Root() {
   }, []);
 
   const navItems = [
-    { path: "/dashboard", label: "India Monitor", icon: Globe, keywords: ["monitor", "home", "dashboard", "india", "overview"] },
-    { path: "/dashboard/pollution-map", label: "Pollution Map", icon: Map, keywords: ["pollution", "map", "stations", "pm25", "aqi"] },
-    { path: "/dashboard/forecasting", label: "Forecasting", icon: TrendingUp, keywords: ["forecast", "predict", "future", "trend"] },
-    { path: "/dashboard/time-machine", label: "Time Machine", icon: Clock, keywords: ["time", "history", "past", "timeline"] },
-    { path: "/dashboard/atmosphere", label: "Atmosphere", icon: Wind, keywords: ["atmosphere", "air", "co2", "no2", "pm10"] },
-    { path: "/dashboard/ocean", label: "Ocean Systems", icon: Waves, keywords: ["ocean", "water", "marine", "sea"] },
-    { path: "/dashboard/biodiversity", label: "Biodiversity", icon: Leaf, keywords: ["biodiversity", "species", "ecosystem", "habitat"] },
-    { path: "/dashboard/industries", label: "Industries", icon: Factory, keywords: ["industry", "compliance", "factory", "pollution", "cpcb", "emissions"] },
-    { path: "/dashboard/data-archive", label: "Data Archive", icon: Database, keywords: ["data", "archive", "export", "dataset"] },
+    { path: "/dashboard", label: "India Monitor", icon: Globe, keywords: ["monitor", "home", "dashboard", "india", "overview"], roles: undefined },
+    { path: "/dashboard/pollution-map", label: "Pollution Map", icon: Map, keywords: ["pollution", "map", "stations", "pm25", "aqi"], roles: undefined },
+    { path: "/dashboard/forecasting", label: "Forecasting", icon: TrendingUp, keywords: ["forecast", "predict", "future", "trend"], roles: undefined },
+    { path: "/dashboard/time-machine", label: "Time Machine", icon: Clock, keywords: ["time", "history", "past", "timeline"], roles: undefined },
+    { path: "/dashboard/atmosphere", label: "Atmosphere", icon: Wind, keywords: ["atmosphere", "air", "co2", "no2", "pm10"], roles: undefined },
+    { path: "/dashboard/ocean", label: "Ocean Systems", icon: Waves, keywords: ["ocean", "water", "marine", "sea"], roles: undefined },
+    { path: "/dashboard/biodiversity", label: "Biodiversity", icon: Leaf, keywords: ["biodiversity", "species", "ecosystem", "habitat"], roles: undefined },
+    { path: "/dashboard/industries", label: "Industries", icon: Factory, keywords: ["industry", "compliance", "factory", "pollution", "cpcb", "emissions"], roles: undefined },
+    { path: "/dashboard/data-archive", label: "Data Archive", icon: Database, keywords: ["data", "archive", "export", "dataset"], roles: undefined },
+    { path: "/dashboard/citizen", label: "Report Issue", icon: Flag, keywords: ["report", "complaint", "citizen", "violation", "tree", "dumping"], roles: ["citizen"] },
   ];
 
   // Filter nav items for search
@@ -662,7 +663,11 @@ export function Root() {
                  height: 'calc(100vh - 220px)'
                }}>
           <nav className="flex flex-col gap-1 p-2">
-            {navItems.filter(item => item.path !== '/dashboard/data-archive').map((item) => {
+            {navItems.filter(item => {
+              if (item.path === '/dashboard/data-archive') return false;
+              if (item.roles && !item.roles.includes(user?.role ?? '')) return false;
+              return true;
+            }).map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
               

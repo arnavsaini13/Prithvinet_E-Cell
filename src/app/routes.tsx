@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { GlobalMonitor } from "./components/GlobalMonitor";
 import { AtmosphereView } from "./components/AtmosphereView";
 import { OceanView } from "./components/OceanView";
@@ -8,6 +8,7 @@ import { ForecastingAnalytics } from "./components/ForecastingAnalytics";
 import { PollutionTimeMachine } from "./components/PollutionTimeMachine";
 import { DataArchive } from "./components/DataArchive";
 import { IndustrialView } from "./components/IndustrialView";
+import { CitizenPortal } from "./components/CitizenPortal";
 import { Root } from "./components/Root";
 import { Login } from "./components/Login";
 import { Register } from "./components/Register";
@@ -35,6 +36,12 @@ export const router = createBrowserRouter([
     path: "/forgot-password",
     Component: ForgotPassword,
   },
+  // ── Citizen Portal — completely separate standalone layout ──
+  {
+    path: "/citizen-portal",
+    element: <Protected><CitizenPortal /></Protected>,
+  },
+  // ── Admin / Officer / Industry monitoring dashboard ──
   {
     path: "/dashboard",
     element: <Protected><Root /></Protected>,
@@ -48,6 +55,8 @@ export const router = createBrowserRouter([
       { path: "time-machine", Component: PollutionTimeMachine },
       { path: "data-archive", Component: DataArchive },
       { path: "industries", Component: IndustrialView },
+      // Legacy citizen path — redirect to the new portal
+      { path: "citizen", element: <Navigate to="/citizen-portal" replace /> },
     ],
   },
 ]);

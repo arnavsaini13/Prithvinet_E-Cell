@@ -166,3 +166,53 @@ class ForecastOut(BaseModel):
     station_id: int
     pollutant: str
     forecast: list[ForecastPoint]
+
+
+# ---------- Citizen Complaints ----------
+
+class ComplaintOut(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    description: str
+    photo_data: str | None
+    photo_filename: str | None
+    location: str | None
+    status: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---------- Community ----------
+
+class CommentOut(BaseModel):
+    id: int
+    post_id: int
+    user_id: int
+    author_name: str
+    content: str
+    created_at: datetime
+
+
+class PostOut(BaseModel):
+    id: int
+    user_id: int
+    author_name: str
+    content: str
+    photo_data: str | None
+    photo_filename: str | None
+    likes_count: int
+    comments_count: int
+    liked_by_me: bool
+    created_at: datetime
+
+
+class LeaderboardEntry(BaseModel):
+    rank: int
+    user_id: int
+    name: str
+    posts_count: int
+    total_likes: int
+    total_comments: int
+    score: int

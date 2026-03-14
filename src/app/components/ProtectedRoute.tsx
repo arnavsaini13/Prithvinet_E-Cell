@@ -1,8 +1,9 @@
-import { Navigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 import { useAuth } from "../context/AuthContext";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { token, loading } = useAuth();
+  const { token, user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -18,6 +19,19 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!token) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Role-based routing — enforce correct portal per role
+  if (user) {
+    const isCitizen = user.role === "citizen";
+    // Citizens trying to access the monitoring dashboard → send to citizen portal
+    if (isCitizen && location.pathname.startsWith("/dashboard")) {
+      return <Navigate to="/citizen-portal" replace />;
+    }
+    // Non-citizens trying to access citizen portal → send to monitoring dashboard
+    if (!isCitizen && location.pathname.startsWith("/citizen-portal")) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return <>{children}</>;

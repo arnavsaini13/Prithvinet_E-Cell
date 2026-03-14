@@ -16,7 +16,7 @@ from sqlalchemy import select
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import init_db, async_session
-from models import MonitoringStation, Industry
+from models import MonitoringStation, Industry, Complaint
 
 from routes.auth import router as auth_router
 from routes.stations import router as stations_router
@@ -24,6 +24,8 @@ from routes.pollution import router as pollution_router
 from routes.alerts import router as alerts_router
 from routes.forecast import router as forecast_router
 from routes.industries import router as industries_router
+from routes.complaints import router as complaints_router
+from routes.community import router as community_router
 from services.real_data_fetcher import backfill_historical_data, run_periodic_fetcher
 from services.compliance_engine import update_all_compliance_scores, run_periodic_compliance_updater
 
@@ -150,6 +152,8 @@ app.include_router(pollution_router)
 app.include_router(alerts_router)
 app.include_router(forecast_router)
 app.include_router(industries_router)
+app.include_router(complaints_router)
+app.include_router(community_router)
 
 
 @app.get("/", tags=["Health"])

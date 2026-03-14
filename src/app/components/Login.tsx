@@ -29,7 +29,9 @@ export function Login() {
 
     try {
       await login(email, password);
-      navigate('/dashboard');
+      // Citizens go to their own portal — all other roles go to the monitoring dashboard
+      const role = localStorage.getItem("prithvinet_role");
+      navigate(role === "citizen" ? "/citizen-portal" : "/dashboard");
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
     } finally {
