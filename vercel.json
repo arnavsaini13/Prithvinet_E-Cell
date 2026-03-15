@@ -1,0 +1,32 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/auth/:path*",           "destination": "/api/index" },
+    { "source": "/auth",                   "destination": "/api/index" },
+    { "source": "/users/:path*",           "destination": "/api/index" },
+    { "source": "/stations",               "destination": "/api/index" },
+    { "source": "/stations/:path*",        "destination": "/api/index" },
+    { "source": "/pollution-data",         "destination": "/api/index" },
+    { "source": "/pollution-data/:path*",  "destination": "/api/index" },
+    { "source": "/heatmap-data",           "destination": "/api/index" },
+    { "source": "/heatmap-data/:path*",    "destination": "/api/index" },
+    { "source": "/alerts",                 "destination": "/api/index" },
+    { "source": "/alerts/:path*",          "destination": "/api/index" },
+    { "source": "/risk-score",             "destination": "/api/index" },
+    { "source": "/risk-score/:path*",      "destination": "/api/index" },
+    { "source": "/forecast",               "destination": "/api/index" },
+    { "source": "/forecast/:path*",        "destination": "/api/index" },
+    { "source": "/industries",             "destination": "/api/index" },
+    { "source": "/industries/:path*",      "destination": "/api/index" },
+    { "source": "/complaints",             "destination": "/api/index" },
+    { "source": "/complaints/:path*",      "destination": "/api/index" },
+    { "source": "/community/:path*",       "destination": "/api/index" },
+    { "source": "/admin/:path*",           "destination": "/api/index" },
+    { "source": "/regional/:path*",        "destination": "/api/index" },
+    { "source": "/officer/:path*",         "destination": "/api/index" },
+    { "source": "/industry/:path*",        "destination": "/api/index" },
+    { "source": "/:path*",                 "destination": "/index.html" }
+  ]
+}
