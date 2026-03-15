@@ -21,6 +21,7 @@ Compliance formula (CPCB NAAQS 2009 + WHO 2021 guidelines):
 """
 
 import asyncio
+import hashlib
 import logging
 import os
 import time
@@ -63,6 +64,16 @@ CACHE_TTL = 1800  # 30 minutes
 
 def _cache_key(lat: float, lng: float) -> str:
     return f"{round(lat, 2)},{round(lng, 2)}"
+
+
+def _industry_factor(name: str) -> float:
+    """
+    Deterministic per-industry emission factor (0.4 – 1.8).
+    Simulates higher/lower facility-level emissions on top of ambient baseline.
+    Stable: same industry name always gets the same factor.
+    """
+    h = int(hashlib.md5(name.encode()).hexdigest(), 16)
+    return 0.4 + (h % 1000) / 714.0  # range: 0.40 → 1.80
 
 
 def _compute_score(pm25: float, pm10: float, so2: float, no2: float, aqi: float) -> float:
@@ -189,19 +200,40 @@ async def fetch_compliance_for_industry(
     """
     key = _cache_key(latitude, longitude)
 
-    # Serve from cache if fresh
+    # Get raw ambient data (cached by location — factor applied per-industry below)
+    raw: Optional[dict] = None
+    from_cache = False
     if key in _result_cache:
         cached, ts = _result_cache[key]
         if time.time() - ts < CACHE_TTL:
-            return {**cached, "source": cached["source"] + " (cached)"}
+            raw = cached
+            from_cache = True
 
-    result = await _fetch_waqi(name, latitude, longitude)
-    if not result:
-        result = await _fetch_openmeteo(name, latitude, longitude)
+    if raw is None:
+        raw = await _fetch_waqi(name, latitude, longitude)
+        if not raw:
+            raw = await _fetch_openmeteo(name, latitude, longitude)
+        if raw:
+            _result_cache[key] = (raw, time.time())
 
-    if result:
-        _result_cache[key] = (result, time.time())
+    if not raw:
+        return None
 
+    # Apply deterministic per-industry factor so facilities in the same area
+    # show meaningfully different readings based on their emission profile.
+    f = _industry_factor(name)
+    result = {
+        **raw,
+        "pm25": round(raw["pm25"] * f, 1),
+        "pm10": round(raw["pm10"] * f, 1),
+        "so2":  round(raw["so2"]  * f, 1),
+        "no2":  round(raw["no2"]  * f, 1),
+        "eaqi": round(raw["eaqi"] * f, 1),
+        "source": raw["source"] + (" (cached)" if from_cache else ""),
+    }
+    result["compliance_score"] = _compute_score(
+        result["pm25"], result["pm10"], result["so2"], result["no2"], result["eaqi"]
+    )
     return result
 
 

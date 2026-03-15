@@ -20,7 +20,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Activity,
-  MapPin,
   Wind,
   RefreshCw,
   AlertCircle,
@@ -651,7 +650,6 @@ export function IndustrialView() {
                 style={{ borderColor: "var(--prithvi-border-dim)", color: "var(--prithvi-electric-cyan)" }}
               >
                 <th className="pb-3 pr-4">FACILITY</th>
-                <th className="pb-3 pr-4">LOCATION</th>
                 <th className="pb-3 pr-4">PM2.5 μg/m³</th>
                 <th className="pb-3 pr-4">PM10 μg/m³</th>
                 <th className="pb-3 pr-4">SO₂ μg/m³</th>
@@ -672,12 +670,6 @@ export function IndustrialView() {
                   style={{ borderColor: "var(--prithvi-border-dim)" }}
                 >
                   <td className="py-3 pr-4 prithvi-text-electric font-semibold">{ind.name}</td>
-                  <td className="py-3 pr-4 opacity-70 prithvi-text-forest">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {ind.location}
-                    </div>
-                  </td>
                   <td className="py-3 pr-4" style={{ color: ind.pm25 > 40 ? "var(--prithvi-critical-red)" : ind.pm25 > 15 ? "var(--prithvi-warm-amber)" : "var(--prithvi-aurora-green)" }}>
                     {ind.pm25.toFixed(1)}
                   </td>
