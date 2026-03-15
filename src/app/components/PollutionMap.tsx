@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { MapPin, X, TrendingUp, TrendingDown, Minus, Radio, Search, Filter, Clock, ZoomIn, ZoomOut, RotateCcw, AlertCircle } from "lucide-react";
+import { MapPin, X, TrendingUp, TrendingDown, Minus, Radio, Search, Filter, Clock, ZoomIn, ZoomOut, RotateCcw, AlertCircle, Download } from "lucide-react";
 import { WorldMapSVG } from "./WorldMapSVG";
 import { stationsApi, pollutionApi, type Station, type PollutionReading } from "../../api/client";
 import { useAuth } from "../context/AuthContext";
+import { generateCPCBReport } from "../../utils/generateCPCBReport";
 
 interface MonitoringStation {
   id: string;
@@ -191,6 +192,25 @@ export function PollutionMap() {
     }
     return "safe";
   };
+
+  function laymanSummary(station: MonitoringStation): string {
+    const air = station.pm25 > 40
+      ? `Air is HAZARDOUS — PM2.5 at ${station.pm25} μg/m³ exceeds India's legal limit of 40. Avoid outdoor activity; use N95 masks.`
+      : station.pm25 > 15
+      ? `Air quality is MODERATE — PM2.5 at ${station.pm25} μg/m³ is above WHO safe limit (15) but within India's legal limit (40). Sensitive groups should reduce outdoor time.`
+      : `Air quality is GOOD — PM2.5 at ${station.pm25} μg/m³ is within WHO guidelines. Safe for all.`;
+    const noise = station.noise > 75
+      ? ` Noise at ${station.noise} dB exceeds legal limits — harmful to hearing with prolonged exposure.`
+      : station.noise > 55
+      ? ` Noise at ${station.noise} dB is above WHO comfort levels and may affect sleep quality over time.`
+      : "";
+    const water = (station.waterPh < 6.5 || station.waterPh > 9.0)
+      ? ` Water pH ${station.waterPh.toFixed(1)} is outside safe limits — not suitable for consumption or aquatic life.`
+      : (station.waterPh < 7.0 || station.waterPh > 8.5)
+      ? ` Water pH ${station.waterPh.toFixed(1)} is slightly outside the ideal range of 7.0–8.5.`
+      : ` Water pH ${station.waterPh.toFixed(1)} is in the healthy range.`;
+    return air + noise + water;
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -614,7 +634,7 @@ export function PollutionMap() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="absolute top-0 right-0 w-96 h-full p-6 rounded-lg border backdrop-blur-xl prithvi-card-layered prithvi-inner-glow"
+              className="absolute top-0 right-0 w-96 h-full p-6 rounded-lg border backdrop-blur-xl prithvi-card-layered prithvi-inner-glow overflow-y-auto"
               style={{
                 background: "var(--prithvi-panel-bg-solid)",
                 borderColor: "var(--prithvi-border-bright)",
@@ -844,10 +864,92 @@ export function PollutionMap() {
                   )}
                 </div>
               </div>
+
+              {/* Plain-English summary */}
+              <div className="mt-4 p-4 rounded-lg border" style={{ background: "var(--prithvi-glass)", borderColor: "var(--prithvi-border-dim)" }}>
+                <div className="text-xs font-mono tracking-wider mb-2 opacity-60 prithvi-text-electric">
+                  WHAT THIS MEANS FOR YOU
+                </div>
+                <p className="text-xs prithvi-text-forest leading-relaxed">
+                  {laymanSummary(selectedStation)}
+                </p>
+              </div>
+
+              {/* Download Report */}
+              <button
+                onClick={() => generateCPCBReport({
+                  name: selectedStation.name,
+                  region: selectedStation.region,
+                  lat: selectedStation.lat,
+                  lng: selectedStation.lng,
+                  pm25: selectedStation.pm25,
+                  pm10: selectedStation.pm10,
+                  noise: selectedStation.noise,
+                  waterPh: selectedStation.waterPh,
+                  status: selectedStation.status,
+                  trend: selectedStation.trend,
+                })}
+                className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-xs font-mono font-bold border transition-all hover:opacity-90"
+                style={{
+                  background: "rgba(0,200,255,0.08)",
+                  borderColor: "var(--prithvi-electric-cyan)",
+                  color: "var(--prithvi-electric-cyan)",
+                }}
+              >
+                <Download className="w-4 h-4" />
+                DOWNLOAD CPCB REPORT (PDF)
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Station Index List */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        className="p-5 rounded-lg border backdrop-blur-md prithvi-card-layered"
+        style={{ background: "var(--prithvi-panel-bg)", borderColor: "var(--prithvi-border-dim)" }}
+      >
+        <h3 className="text-sm font-mono tracking-wider prithvi-text-electric mb-3">
+          MONITORING STATIONS — CLICK TO VIEW DETAILS &amp; DOWNLOAD REPORT
+        </h3>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {filteredStations.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSelectedStation(s)}
+              className="flex items-start gap-2 p-3 rounded-lg border text-left transition-all hover:bg-white/5"
+              style={{
+                borderColor: selectedStation?.id === s.id
+                  ? getStationColor(s)
+                  : "var(--prithvi-border-dim)",
+                background: selectedStation?.id === s.id
+                  ? `${getStationColor(s)}11`
+                  : "var(--prithvi-glass)",
+              }}
+            >
+              <div
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5"
+                style={{ background: getStationColor(s), boxShadow: `0 0 5px ${getStationColor(s)}` }}
+              />
+              <div className="min-w-0">
+                <div className="text-xs font-mono font-bold prithvi-text-electric truncate">{s.name}</div>
+                <div className="text-[10px] font-mono opacity-50 prithvi-text-forest truncate">{s.region}</div>
+                <div className="text-[10px] font-mono mt-0.5" style={{ color: getStationColor(s) }}>
+                  PM2.5 {s.pm25} μg/m³
+                </div>
+              </div>
+            </button>
+          ))}
+          {filteredStations.length === 0 && (
+            <p className="col-span-4 text-xs font-mono opacity-40 prithvi-text-electric text-center py-4">
+              No stations match the current filter.
+            </p>
+          )}
+        </div>
+      </motion.div>
 
       {/* Statistics */}
       <div className="grid grid-cols-4 gap-4">
